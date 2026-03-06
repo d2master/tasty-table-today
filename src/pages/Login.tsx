@@ -39,6 +39,9 @@ export default function LoginPage() {
           <div className="space-y-2">
             <Label htmlFor="password">Senha</Label>
             <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="••••••••" />
+            <div className="text-right">
+              <Link to="/esqueci-senha" className="text-xs text-muted-foreground hover:text-primary hover:underline">Esqueci minha senha</Link>
+            </div>
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Entrando..." : "Entrar"}
