@@ -14,7 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy } from "lucide-react";
+import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { OrderItem } from "@/hooks/useOrders";
 
 type Tab = "categories" | "products" | "orders";
@@ -174,6 +176,45 @@ export default function Dashboard() {
             <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(menuUrl); toast.success("Link copiado!"); }}>
               <Copy className="h-4 w-4 mr-1" /> Link
             </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm"><QrCode className="h-4 w-4 mr-1" /> QR Code</Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                  <DialogTitle className="text-center">QR Code do Cardápio</DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col items-center gap-4 py-4">
+                  <div className="rounded-xl border bg-white p-4" id="qrcode-container">
+                    <QRCodeSVG value={menuUrl} size={200} level="H" includeMargin />
+                  </div>
+                  <p className="text-sm text-muted-foreground text-center break-all">{menuUrl}</p>
+                  <Button
+                    onClick={() => {
+                      const svg = document.querySelector("#qrcode-container svg");
+                      if (!svg) return;
+                      const svgData = new XMLSerializer().serializeToString(svg);
+                      const canvas = document.createElement("canvas");
+                      canvas.width = 256;
+                      canvas.height = 256;
+                      const ctx = canvas.getContext("2d");
+                      const img = new Image();
+                      img.onload = () => {
+                        ctx?.drawImage(img, 0, 0, 256, 256);
+                        const a = document.createElement("a");
+                        a.download = `qrcode-${restaurant.slug}.png`;
+                        a.href = canvas.toDataURL("image/png");
+                        a.click();
+                      };
+                      img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+                    }}
+                    className="w-full"
+                  >
+                    <Download className="h-4 w-4 mr-1" /> Baixar QR Code
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
             <Link to={`/cardapio/${restaurant.slug}`} target="_blank">
               <Button variant="ghost" size="sm"><ExternalLink className="h-4 w-4" /></Button>
             </Link>
