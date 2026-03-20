@@ -48,7 +48,8 @@ export default function PublicMenu() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
+  const [tableNumber, setTableNumber] = useState("");
+  const [observation, setObservation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
