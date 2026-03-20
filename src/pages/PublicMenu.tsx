@@ -266,11 +266,15 @@ export default function PublicMenu() {
               <div className="space-y-3 pt-2">
                 <div className="space-y-1">
                   <Label>Seu nome</Label>
-                  <Input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="João da Silva" />
+                  <Input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="João da Silva (opcional)" />
                 </div>
                 <div className="space-y-1">
-                  <Label>Telefone</Label>
-                  <Input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="(11) 99999-9999" />
+                  <Label>Número da mesa <span className="text-destructive">*</span></Label>
+                  <Input value={tableNumber} onChange={e => setTableNumber(e.target.value)} placeholder="Ex: 5" />
+                </div>
+                <div className="space-y-1">
+                  <Label>Observação</Label>
+                  <Input value={observation} onChange={e => setObservation(e.target.value)} placeholder="Sem cebola, bem passado... (opcional)" />
                 </div>
               </div>
 
