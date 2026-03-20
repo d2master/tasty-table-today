@@ -88,7 +88,10 @@ export default function PublicMenu() {
   const cartTotal = cart.reduce((sum, c) => sum + c.quantity * Number(c.product.price), 0);
   const cartCount = cart.reduce((sum, c) => sum + c.quantity, 0);
 
-  const handleSubmitOrder = async () => {
+  const handleSubmitOrder = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if (!tableNumber.trim()) {
       toast.error("Informe o número da mesa");
       return;
@@ -99,24 +102,26 @@ export default function PublicMenu() {
     }
     setSubmitting(true);
 
-    const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .insert({
-        restaurant_id: restaurant!.id,
-        customer_name: customerName.trim() || "Cliente",
-        table_number: tableNumber.trim(),
-        customer_phone: observation.trim() || null,
-        status: "pending",
-        total: cartTotal,
-      })
-      .select()
-      .single();
+    try {
+      const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          restaurant_id: restaurant!.id,
+          customer_name: customerName.trim() || "Cliente",
+          table_number: tableNumber.trim(),
+          customer_phone: observation.trim() || null,
+          status: "pending",
+          total: cartTotal,
+        })
+        .select()
+        .single();
 
-    if (orderError) {
-      toast.error("Erro ao enviar pedido");
-      setSubmitting(false);
-      return;
-    }
+      if (orderError) {
+        console.error("Order insert error:", orderError);
+        toast.error("Erro ao enviar pedido: " + orderError.message);
+        setSubmitting(false);
+        return;
+      }
 
     const items = cart.map(c => ({
       order_id: order.id,
@@ -126,20 +131,26 @@ export default function PublicMenu() {
       price: Number(c.product.price),
     }));
 
-    const { error: itemsError } = await supabase.from("order_items").insert(items);
-    if (itemsError) {
-      toast.error("Erro ao salvar itens");
-      setSubmitting(false);
-      return;
-    }
+      const { error: itemsError } = await supabase.from("order_items").insert(items);
+      if (itemsError) {
+        console.error("Items insert error:", itemsError);
+        toast.error("Erro ao salvar itens: " + itemsError.message);
+        setSubmitting(false);
+        return;
+      }
 
-    toast.success("Pedido enviado com sucesso! 🎉");
-    setCart([]);
-    setShowCart(false);
-    setCustomerName("");
-    setTableNumber("");
-    setObservation("");
-    setSubmitting(false);
+      toast.success("Pedido enviado com sucesso! 🎉");
+      setCart([]);
+      setShowCart(false);
+      setCustomerName("");
+      setTableNumber("");
+      setObservation("");
+    } catch (err: any) {
+      console.error("Unexpected order error:", err);
+      toast.error("Erro inesperado ao enviar pedido");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando cardápio...</div>;
@@ -231,7 +242,7 @@ export default function PublicMenu() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className="absolute inset-0 bg-foreground/40" onClick={() => setShowCart(false)} />
+            <div className="absolute inset-0 bg-foreground/40" onClick={() => !submitting && setShowCart(false)} />
             <motion.div
               className="relative w-full max-w-lg bg-card rounded-t-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto"
               initial={{ y: "100%" }}
