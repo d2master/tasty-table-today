@@ -242,7 +242,7 @@ export default function PublicMenu() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className="absolute inset-0 bg-foreground/40" onClick={() => setShowCart(false)} />
+            <div className="absolute inset-0 bg-foreground/40" onClick={() => !submitting && setShowCart(false)} />
             <motion.div
               className="relative w-full max-w-lg bg-card rounded-t-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto"
               initial={{ y: "100%" }}
