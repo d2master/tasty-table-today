@@ -89,8 +89,8 @@ export default function PublicMenu() {
   const cartCount = cart.reduce((sum, c) => sum + c.quantity, 0);
 
   const handleSubmitOrder = async () => {
-    if (!customerName.trim() || !customerPhone.trim()) {
-      toast.error("Informe seu nome e telefone");
+    if (!tableNumber.trim()) {
+      toast.error("Informe o número da mesa");
       return;
     }
     if (cart.length === 0) {
@@ -103,8 +103,9 @@ export default function PublicMenu() {
       .from("orders")
       .insert({
         restaurant_id: restaurant!.id,
-        customer_name: customerName.trim(),
-        customer_phone: customerPhone.trim(),
+        customer_name: customerName.trim() || "Cliente",
+        table_number: tableNumber.trim(),
+        customer_phone: observation.trim() || null,
         status: "pending",
         total: cartTotal,
       })
@@ -136,7 +137,8 @@ export default function PublicMenu() {
     setCart([]);
     setShowCart(false);
     setCustomerName("");
-    setCustomerPhone("");
+    setTableNumber("");
+    setObservation("");
     setSubmitting(false);
   };
 
