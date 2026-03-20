@@ -252,8 +252,9 @@ export default function Dashboard() {
               <div key={order.id} className="rounded-xl border bg-card p-4 space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="font-semibold">{order.customer_name}</p>
-                    <p className="text-sm text-muted-foreground">{order.customer_phone}</p>
+                    <p className="font-semibold">{order.customer_name || "Cliente"}</p>
+                    <p className="text-sm font-medium text-primary">Mesa: {order.table_number || "—"}</p>
+                    {order.customer_phone && <p className="text-sm text-muted-foreground">Obs: {order.customer_phone}</p>}
                     <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString("pt-BR")}</p>
                   </div>
                   <div className="flex flex-col items-end gap-2">

@@ -6,7 +6,8 @@ export interface Order {
   id: string;
   restaurant_id: string;
   customer_name: string;
-  customer_phone: string;
+  customer_phone: string | null;
+  table_number: string;
   status: string;
   total: number;
   created_at: string;

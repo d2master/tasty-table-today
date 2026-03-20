@@ -48,7 +48,8 @@ export default function PublicMenu() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
+  const [tableNumber, setTableNumber] = useState("");
+  const [observation, setObservation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
@@ -88,8 +89,8 @@ export default function PublicMenu() {
   const cartCount = cart.reduce((sum, c) => sum + c.quantity, 0);
 
   const handleSubmitOrder = async () => {
-    if (!customerName.trim() || !customerPhone.trim()) {
-      toast.error("Informe seu nome e telefone");
+    if (!tableNumber.trim()) {
+      toast.error("Informe o número da mesa");
       return;
     }
     if (cart.length === 0) {
@@ -102,8 +103,9 @@ export default function PublicMenu() {
       .from("orders")
       .insert({
         restaurant_id: restaurant!.id,
-        customer_name: customerName.trim(),
-        customer_phone: customerPhone.trim(),
+        customer_name: customerName.trim() || "Cliente",
+        table_number: tableNumber.trim(),
+        customer_phone: observation.trim() || null,
         status: "pending",
         total: cartTotal,
       })
@@ -135,7 +137,8 @@ export default function PublicMenu() {
     setCart([]);
     setShowCart(false);
     setCustomerName("");
-    setCustomerPhone("");
+    setTableNumber("");
+    setObservation("");
     setSubmitting(false);
   };
 
@@ -263,11 +266,15 @@ export default function PublicMenu() {
               <div className="space-y-3 pt-2">
                 <div className="space-y-1">
                   <Label>Seu nome</Label>
-                  <Input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="João da Silva" />
+                  <Input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="João da Silva (opcional)" />
                 </div>
                 <div className="space-y-1">
-                  <Label>Telefone</Label>
-                  <Input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="(11) 99999-9999" />
+                  <Label>Número da mesa <span className="text-destructive">*</span></Label>
+                  <Input value={tableNumber} onChange={e => setTableNumber(e.target.value)} placeholder="Ex: 5" />
+                </div>
+                <div className="space-y-1">
+                  <Label>Observação</Label>
+                  <Input value={observation} onChange={e => setObservation(e.target.value)} placeholder="Sem cebola, bem passado... (opcional)" />
                 </div>
               </div>
 
