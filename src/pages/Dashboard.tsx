@@ -253,7 +253,7 @@ export default function Dashboard() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-semibold">{order.customer_name || "Cliente"}</p>
-                    <p className="text-sm font-medium text-primary">Mesa: {(order as any).table_number || "—"}</p>
+                    <p className="text-sm font-medium text-primary">Mesa: {order.table_number || "—"}</p>
                     {order.customer_phone && <p className="text-sm text-muted-foreground">Obs: {order.customer_phone}</p>}
                     <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString("pt-BR")}</p>
                   </div>
