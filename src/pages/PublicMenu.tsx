@@ -131,20 +131,26 @@ export default function PublicMenu() {
       price: Number(c.product.price),
     }));
 
-    const { error: itemsError } = await supabase.from("order_items").insert(items);
-    if (itemsError) {
-      toast.error("Erro ao salvar itens");
-      setSubmitting(false);
-      return;
-    }
+      const { error: itemsError } = await supabase.from("order_items").insert(items);
+      if (itemsError) {
+        console.error("Items insert error:", itemsError);
+        toast.error("Erro ao salvar itens: " + itemsError.message);
+        setSubmitting(false);
+        return;
+      }
 
-    toast.success("Pedido enviado com sucesso! 🎉");
-    setCart([]);
-    setShowCart(false);
-    setCustomerName("");
-    setTableNumber("");
-    setObservation("");
-    setSubmitting(false);
+      toast.success("Pedido enviado com sucesso! 🎉");
+      setCart([]);
+      setShowCart(false);
+      setCustomerName("");
+      setTableNumber("");
+      setObservation("");
+    } catch (err: any) {
+      console.error("Unexpected order error:", err);
+      toast.error("Erro inesperado ao enviar pedido");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando cardápio...</div>;
