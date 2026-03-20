@@ -91,31 +91,34 @@ export type Database = {
       orders: {
         Row: {
           created_at: string
-          customer_name: string
-          customer_phone: string
+          customer_name: string | null
+          customer_phone: string | null
           id: string
           restaurant_id: string
           status: string
+          table_number: string
           total: number
           updated_at: string
         }
         Insert: {
           created_at?: string
-          customer_name: string
-          customer_phone: string
+          customer_name?: string | null
+          customer_phone?: string | null
           id?: string
           restaurant_id: string
           status?: string
+          table_number?: string
           total?: number
           updated_at?: string
         }
         Update: {
           created_at?: string
-          customer_name?: string
-          customer_phone?: string
+          customer_name?: string | null
+          customer_phone?: string | null
           id?: string
           restaurant_id?: string
           status?: string
+          table_number?: string
           total?: number
           updated_at?: string
         }
