@@ -88,7 +88,10 @@ export default function PublicMenu() {
   const cartTotal = cart.reduce((sum, c) => sum + c.quantity * Number(c.product.price), 0);
   const cartCount = cart.reduce((sum, c) => sum + c.quantity, 0);
 
-  const handleSubmitOrder = async () => {
+  const handleSubmitOrder = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if (!tableNumber.trim()) {
       toast.error("Informe o número da mesa");
       return;
@@ -99,24 +102,26 @@ export default function PublicMenu() {
     }
     setSubmitting(true);
 
-    const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .insert({
-        restaurant_id: restaurant!.id,
-        customer_name: customerName.trim() || "Cliente",
-        table_number: tableNumber.trim(),
-        customer_phone: observation.trim() || null,
-        status: "pending",
-        total: cartTotal,
-      })
-      .select()
-      .single();
+    try {
+      const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          restaurant_id: restaurant!.id,
+          customer_name: customerName.trim() || "Cliente",
+          table_number: tableNumber.trim(),
+          customer_phone: observation.trim() || null,
+          status: "pending",
+          total: cartTotal,
+        })
+        .select()
+        .single();
 
-    if (orderError) {
-      toast.error("Erro ao enviar pedido");
-      setSubmitting(false);
-      return;
-    }
+      if (orderError) {
+        console.error("Order insert error:", orderError);
+        toast.error("Erro ao enviar pedido: " + orderError.message);
+        setSubmitting(false);
+        return;
+      }
 
     const items = cart.map(c => ({
       order_id: order.id,
