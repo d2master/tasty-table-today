@@ -203,6 +203,109 @@ export default function Dashboard() {
   const todayOrders = orders.filter(o => new Date(o.created_at) >= today);
   const olderOrders = orders.filter(o => new Date(o.created_at) < today);
 
+  const renderOrder = (order: typeof orders[0]) => (
+    <div key={order.id} className="rounded-xl border bg-card p-4 space-y-3">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="font-semibold">{order.customer_name || "Cliente"}</p>
+          <p className="text-sm font-medium text-primary">Mesa: {order.table_number || "—"}</p>
+          {order.customer_phone && <p className="text-sm text-muted-foreground">Obs: {order.customer_phone}</p>}
+          <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString("pt-BR")}</p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <Badge className={`${statusLabels[order.status]?.color} ${order.status === "pending" ? "animate-blink-pending" : ""}`}>
+            {statusLabels[order.status]?.label}
+          </Badge>
+          <span className="font-display font-bold text-lg">R$ {Number(order.total).toFixed(2)}</span>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {["pending", "preparing", "done", "cancelled"].map(s => (
+          <Button
+            key={s}
+            size="sm"
+            variant={order.status === s ? "default" : "outline"}
+            onClick={() => {
+              updateOrderStatus.mutateAsync({ id: order.id, status: s });
+              if (s !== "preparing") {
+                setTimers(prev => {
+                  const next = { ...prev };
+                  delete next[order.id];
+                  return next;
+                });
+              }
+            }}
+            className="text-xs"
+          >
+            {statusLabels[s].label}
+          </Button>
+        ))}
+      </div>
+      {order.status === "preparing" && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {!timers[order.id] ? (
+            <>
+              <Timer className="h-4 w-4 text-info" />
+              <Input
+                type="number"
+                placeholder="Min"
+                className="w-20 h-8 text-xs"
+                value={timerInput[order.id] || ""}
+                onChange={e => setTimerInput(prev => ({ ...prev, [order.id]: e.target.value }))}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs h-8"
+                onClick={() => {
+                  const mins = parseInt(timerInput[order.id] || "0");
+                  if (mins > 0) {
+                    setTimers(prev => ({ ...prev, [order.id]: { total: mins * 60, remaining: mins * 60 } }));
+                  }
+                }}
+              >
+                Iniciar
+              </Button>
+            </>
+          ) : (
+            <>
+              <Timer className={`h-4 w-4 ${timers[order.id].remaining === 0 ? "text-destructive animate-blink-pending" : "text-info"}`} />
+              <span className={`font-mono text-sm font-bold ${timers[order.id].remaining === 0 ? "text-destructive" : ""}`}>
+                {Math.floor(timers[order.id].remaining / 60).toString().padStart(2, "0")}:
+                {(timers[order.id].remaining % 60).toString().padStart(2, "0")}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs h-8"
+                onClick={() => setTimers(prev => {
+                  const next = { ...prev };
+                  delete next[order.id];
+                  return next;
+                })}
+              >
+                Cancelar
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+      <Button variant="ghost" size="sm" onClick={() => handleExpandOrder(order.id)}>
+        {expandedOrder === order.id ? "Ocultar itens" : "Ver itens"}
+      </Button>
+      {expandedOrder === order.id && (
+        <div className="border-t pt-2 space-y-1">
+          {orderItems.map(item => (
+            <div key={item.id} className="flex justify-between text-sm">
+              <span>{item.quantity}x {item.product_name}</span>
+              <span className="text-muted-foreground">R$ {(item.quantity * Number(item.price)).toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   const tabs = [
     { id: "orders" as Tab, label: "Pedidos do dia", icon: ShoppingBag, count: todayOrders.filter(o => o.status === "pending").length },
     { id: "orders-old" as Tab, label: "Pedidos anteriores", icon: ShoppingBag, count: olderOrders.length || undefined },
