@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useRestaurant } from "@/hooks/useRestaurant";
@@ -6,6 +6,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useProducts } from "@/hooks/useProducts";
 import { useOrders } from "@/hooks/useOrders";
 import { uploadProductImage } from "@/lib/supabase-helpers";
+import { playNewOrderSound, playTimerEndSound } from "@/lib/sounds";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download } from "lucide-react";
+import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { OrderItem } from "@/hooks/useOrders";
@@ -51,6 +52,45 @@ export default function Dashboard() {
   // Order items expand
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+
+  // Timer state: { [orderId]: { total: seconds, remaining: seconds } }
+  const [timers, setTimers] = useState<Record<string, { total: number; remaining: number }>>({});
+  const [timerInput, setTimerInput] = useState<Record<string, string>>({});
+
+  // Track order count for new-order sound
+  const prevOrderCountRef = useRef<number | null>(null);
+
+  // Detect new orders and play sound
+  useEffect(() => {
+    const pendingCount = orders.filter(o => o.status === "pending").length;
+    if (prevOrderCountRef.current !== null && pendingCount > prevOrderCountRef.current) {
+      playNewOrderSound();
+      toast.info("🔔 Novo pedido recebido!");
+    }
+    prevOrderCountRef.current = pendingCount;
+  }, [orders]);
+
+  // Timer countdown interval
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimers(prev => {
+        const next = { ...prev };
+        let changed = false;
+        for (const id of Object.keys(next)) {
+          if (next[id].remaining > 0) {
+            next[id] = { ...next[id], remaining: next[id].remaining - 1 };
+            changed = true;
+            if (next[id].remaining === 0) {
+              playTimerEndSound();
+              toast.warning(`⏰ Tempo do pedido esgotou!`);
+            }
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/login");
@@ -258,7 +298,9 @@ export default function Dashboard() {
                     <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString("pt-BR")}</p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <Badge className={statusLabels[order.status]?.color}>{statusLabels[order.status]?.label}</Badge>
+                  <Badge className={`${statusLabels[order.status]?.color} ${order.status === "pending" ? "animate-blink-pending" : ""}`}>
+                      {statusLabels[order.status]?.label}
+                    </Badge>
                     <span className="font-display font-bold text-lg">R$ {Number(order.total).toFixed(2)}</span>
                   </div>
                 </div>
@@ -268,13 +310,72 @@ export default function Dashboard() {
                       key={s}
                       size="sm"
                       variant={order.status === s ? "default" : "outline"}
-                      onClick={() => updateOrderStatus.mutateAsync({ id: order.id, status: s })}
+                      onClick={() => {
+                        updateOrderStatus.mutateAsync({ id: order.id, status: s });
+                        if (s !== "preparing") {
+                          setTimers(prev => {
+                            const next = { ...prev };
+                            delete next[order.id];
+                            return next;
+                          });
+                        }
+                      }}
                       className="text-xs"
                     >
                       {statusLabels[s].label}
                     </Button>
                   ))}
                 </div>
+                {/* Timer for "Em Preparo" */}
+                {order.status === "preparing" && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {!timers[order.id] ? (
+                      <>
+                        <Timer className="h-4 w-4 text-info" />
+                        <Input
+                          type="number"
+                          placeholder="Min"
+                          className="w-20 h-8 text-xs"
+                          value={timerInput[order.id] || ""}
+                          onChange={e => setTimerInput(prev => ({ ...prev, [order.id]: e.target.value }))}
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-8"
+                          onClick={() => {
+                            const mins = parseInt(timerInput[order.id] || "0");
+                            if (mins > 0) {
+                              setTimers(prev => ({ ...prev, [order.id]: { total: mins * 60, remaining: mins * 60 } }));
+                            }
+                          }}
+                        >
+                          Iniciar
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Timer className={`h-4 w-4 ${timers[order.id].remaining === 0 ? "text-destructive animate-blink-pending" : "text-info"}`} />
+                        <span className={`font-mono text-sm font-bold ${timers[order.id].remaining === 0 ? "text-destructive" : ""}`}>
+                          {Math.floor(timers[order.id].remaining / 60).toString().padStart(2, "0")}:
+                          {(timers[order.id].remaining % 60).toString().padStart(2, "0")}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs h-8"
+                          onClick={() => setTimers(prev => {
+                            const next = { ...prev };
+                            delete next[order.id];
+                            return next;
+                          })}
+                        >
+                          Cancelar
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
                 <Button variant="ghost" size="sm" onClick={() => handleExpandOrder(order.id)}>
                   {expandedOrder === order.id ? "Ocultar itens" : "Ver itens"}
                 </Button>
