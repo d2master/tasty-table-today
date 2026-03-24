@@ -308,7 +308,7 @@ export default function Dashboard() {
                     <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString("pt-BR")}</p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                  <Badge className={`${statusLabels[order.status]?.color} ${order.status === "pending" ? "animate-blink-pending" : ""}`}>
+                    <Badge className={`${statusLabels[order.status]?.color} ${order.status === "pending" ? "animate-blink-pending" : ""}`}>
                       {statusLabels[order.status]?.label}
                     </Badge>
                     <span className="font-display font-bold text-lg">R$ {Number(order.total).toFixed(2)}</span>
@@ -336,7 +336,6 @@ export default function Dashboard() {
                     </Button>
                   ))}
                 </div>
-                {/* Timer for "Em Preparo" */}
                 {order.status === "preparing" && (
                   <div className="flex items-center gap-2 flex-wrap">
                     {!timers[order.id] ? (
@@ -400,9 +399,35 @@ export default function Dashboard() {
                   </div>
                 )}
               </div>
-            ))}
-          </div>
-        )}
+          );
+
+          return (
+            <div className="space-y-6">
+              <h2 className="font-display text-xl font-bold">Pedidos</h2>
+              {orders.length === 0 && <p className="text-muted-foreground">Nenhum pedido ainda.</p>}
+
+              {todayOrders.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
+                    📅 Hoje — {new Date().toLocaleDateString("pt-BR")}
+                    <Badge variant="outline" className="text-xs">{todayOrders.length}</Badge>
+                  </h3>
+                  {todayOrders.map(renderOrder)}
+                </div>
+              )}
+
+              {Object.entries(olderGrouped).map(([date, dateOrders]) => (
+                <div key={date} className="space-y-3">
+                  <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                    📅 {date}
+                    <Badge variant="outline" className="text-xs">{dateOrders.length}</Badge>
+                  </h3>
+                  {dateOrders.map(renderOrder)}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* CATEGORIES TAB */}
         {activeTab === "categories" && (
