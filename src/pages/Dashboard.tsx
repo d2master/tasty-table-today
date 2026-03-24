@@ -53,6 +53,45 @@ export default function Dashboard() {
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
 
+  // Timer state: { [orderId]: { total: seconds, remaining: seconds } }
+  const [timers, setTimers] = useState<Record<string, { total: number; remaining: number }>>({});
+  const [timerInput, setTimerInput] = useState<Record<string, string>>({});
+
+  // Track order count for new-order sound
+  const prevOrderCountRef = useRef<number | null>(null);
+
+  // Detect new orders and play sound
+  useEffect(() => {
+    const pendingCount = orders.filter(o => o.status === "pending").length;
+    if (prevOrderCountRef.current !== null && pendingCount > prevOrderCountRef.current) {
+      playNewOrderSound();
+      toast.info("🔔 Novo pedido recebido!");
+    }
+    prevOrderCountRef.current = pendingCount;
+  }, [orders]);
+
+  // Timer countdown interval
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimers(prev => {
+        const next = { ...prev };
+        let changed = false;
+        for (const id of Object.keys(next)) {
+          if (next[id].remaining > 0) {
+            next[id] = { ...next[id], remaining: next[id].remaining - 1 };
+            changed = true;
+            if (next[id].remaining === 0) {
+              playTimerEndSound();
+              toast.warning(`⏰ Tempo do pedido esgotou!`);
+            }
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     if (!authLoading && !user) navigate("/login");
   }, [authLoading, user, navigate]);
