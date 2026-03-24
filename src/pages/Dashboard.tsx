@@ -284,11 +284,21 @@ export default function Dashboard() {
 
       <main className="container py-6 space-y-6">
         {/* ORDERS TAB */}
-        {activeTab === "orders" && (
-          <div className="space-y-4">
-            <h2 className="font-display text-xl font-bold">Pedidos</h2>
-            {orders.length === 0 && <p className="text-muted-foreground">Nenhum pedido ainda.</p>}
-            {orders.map(order => (
+        {activeTab === "orders" && (() => {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const todayOrders = orders.filter(o => new Date(o.created_at) >= today);
+          const olderOrders = orders.filter(o => new Date(o.created_at) < today);
+
+          // Group older orders by date
+          const olderGrouped: Record<string, typeof orders> = {};
+          olderOrders.forEach(o => {
+            const key = new Date(o.created_at).toLocaleDateString("pt-BR");
+            if (!olderGrouped[key]) olderGrouped[key] = [];
+            olderGrouped[key].push(o);
+          });
+
+          const renderOrder = (order: typeof orders[0]) => (
               <div key={order.id} className="rounded-xl border bg-card p-4 space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
