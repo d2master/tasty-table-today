@@ -95,3 +95,12 @@
     font-family: 'Space Grotesk', sans-serif;
   }
 }
+
+@keyframes blink-pending {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.animate-blink-pending {
+  animation: blink-pending 1s ease-in-out infinite;
+}
