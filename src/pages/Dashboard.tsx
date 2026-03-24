@@ -298,7 +298,9 @@ export default function Dashboard() {
                     <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString("pt-BR")}</p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <Badge className={statusLabels[order.status]?.color}>{statusLabels[order.status]?.label}</Badge>
+                  <Badge className={`${statusLabels[order.status]?.color} ${order.status === "pending" ? "animate-blink-pending" : ""}`}>
+                      {statusLabels[order.status]?.label}
+                    </Badge>
                     <span className="font-display font-bold text-lg">R$ {Number(order.total).toFixed(2)}</span>
                   </div>
                 </div>
@@ -308,13 +310,72 @@ export default function Dashboard() {
                       key={s}
                       size="sm"
                       variant={order.status === s ? "default" : "outline"}
-                      onClick={() => updateOrderStatus.mutateAsync({ id: order.id, status: s })}
+                      onClick={() => {
+                        updateOrderStatus.mutateAsync({ id: order.id, status: s });
+                        if (s !== "preparing") {
+                          setTimers(prev => {
+                            const next = { ...prev };
+                            delete next[order.id];
+                            return next;
+                          });
+                        }
+                      }}
                       className="text-xs"
                     >
                       {statusLabels[s].label}
                     </Button>
                   ))}
                 </div>
+                {/* Timer for "Em Preparo" */}
+                {order.status === "preparing" && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {!timers[order.id] ? (
+                      <>
+                        <Timer className="h-4 w-4 text-info" />
+                        <Input
+                          type="number"
+                          placeholder="Min"
+                          className="w-20 h-8 text-xs"
+                          value={timerInput[order.id] || ""}
+                          onChange={e => setTimerInput(prev => ({ ...prev, [order.id]: e.target.value }))}
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-8"
+                          onClick={() => {
+                            const mins = parseInt(timerInput[order.id] || "0");
+                            if (mins > 0) {
+                              setTimers(prev => ({ ...prev, [order.id]: { total: mins * 60, remaining: mins * 60 } }));
+                            }
+                          }}
+                        >
+                          Iniciar
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Timer className={`h-4 w-4 ${timers[order.id].remaining === 0 ? "text-destructive animate-blink-pending" : "text-info"}`} />
+                        <span className={`font-mono text-sm font-bold ${timers[order.id].remaining === 0 ? "text-destructive" : ""}`}>
+                          {Math.floor(timers[order.id].remaining / 60).toString().padStart(2, "0")}:
+                          {(timers[order.id].remaining % 60).toString().padStart(2, "0")}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs h-8"
+                          onClick={() => setTimers(prev => {
+                            const next = { ...prev };
+                            delete next[order.id];
+                            return next;
+                          })}
+                        >
+                          Cancelar
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
                 <Button variant="ghost" size="sm" onClick={() => handleExpandOrder(order.id)}>
                   {expandedOrder === order.id ? "Ocultar itens" : "Ver itens"}
                 </Button>
