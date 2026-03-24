@@ -20,7 +20,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { OrderItem } from "@/hooks/useOrders";
 
-type Tab = "categories" | "products" | "orders";
+type Tab = "categories" | "products" | "orders" | "orders-old";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendente", color: "bg-warning text-warning-foreground" },
