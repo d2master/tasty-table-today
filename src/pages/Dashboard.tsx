@@ -198,8 +198,14 @@ export default function Dashboard() {
     setExpandedOrder(orderId);
   };
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayOrders = orders.filter(o => new Date(o.created_at) >= today);
+  const olderOrders = orders.filter(o => new Date(o.created_at) < today);
+
   const tabs = [
-    { id: "orders" as Tab, label: "Pedidos", icon: ShoppingBag, count: orders.filter(o => o.status === "pending").length },
+    { id: "orders" as Tab, label: "Pedidos do dia", icon: ShoppingBag, count: todayOrders.filter(o => o.status === "pending").length },
+    { id: "orders-old" as Tab, label: "Pedidos anteriores", icon: ShoppingBag, count: olderOrders.length || undefined },
     { id: "products" as Tab, label: "Produtos", icon: Package },
     { id: "categories" as Tab, label: "Categorias", icon: FolderOpen },
   ];
