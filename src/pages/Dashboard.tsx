@@ -20,7 +20,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { OrderItem } from "@/hooks/useOrders";
 
-type Tab = "categories" | "products" | "orders";
+type Tab = "categories" | "products" | "orders" | "orders-old";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendente", color: "bg-warning text-warning-foreground" },
@@ -198,8 +198,117 @@ export default function Dashboard() {
     setExpandedOrder(orderId);
   };
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayOrders = orders.filter(o => new Date(o.created_at) >= today);
+  const olderOrders = orders.filter(o => new Date(o.created_at) < today);
+
+  const renderOrder = (order: typeof orders[0]) => (
+    <div key={order.id} className="rounded-xl border bg-card p-4 space-y-3">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="font-semibold">{order.customer_name || "Cliente"}</p>
+          <p className="text-sm font-medium text-primary">Mesa: {order.table_number || "—"}</p>
+          {order.customer_phone && <p className="text-sm text-muted-foreground">Obs: {order.customer_phone}</p>}
+          <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString("pt-BR")}</p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <Badge className={`${statusLabels[order.status]?.color} ${order.status === "pending" ? "animate-blink-pending" : ""}`}>
+            {statusLabels[order.status]?.label}
+          </Badge>
+          <span className="font-display font-bold text-lg">R$ {Number(order.total).toFixed(2)}</span>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {["pending", "preparing", "done", "cancelled"].map(s => (
+          <Button
+            key={s}
+            size="sm"
+            variant={order.status === s ? "default" : "outline"}
+            onClick={() => {
+              updateOrderStatus.mutateAsync({ id: order.id, status: s });
+              if (s !== "preparing") {
+                setTimers(prev => {
+                  const next = { ...prev };
+                  delete next[order.id];
+                  return next;
+                });
+              }
+            }}
+            className="text-xs"
+          >
+            {statusLabels[s].label}
+          </Button>
+        ))}
+      </div>
+      {order.status === "preparing" && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {!timers[order.id] ? (
+            <>
+              <Timer className="h-4 w-4 text-info" />
+              <Input
+                type="number"
+                placeholder="Min"
+                className="w-20 h-8 text-xs"
+                value={timerInput[order.id] || ""}
+                onChange={e => setTimerInput(prev => ({ ...prev, [order.id]: e.target.value }))}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs h-8"
+                onClick={() => {
+                  const mins = parseInt(timerInput[order.id] || "0");
+                  if (mins > 0) {
+                    setTimers(prev => ({ ...prev, [order.id]: { total: mins * 60, remaining: mins * 60 } }));
+                  }
+                }}
+              >
+                Iniciar
+              </Button>
+            </>
+          ) : (
+            <>
+              <Timer className={`h-4 w-4 ${timers[order.id].remaining === 0 ? "text-destructive animate-blink-pending" : "text-info"}`} />
+              <span className={`font-mono text-sm font-bold ${timers[order.id].remaining === 0 ? "text-destructive" : ""}`}>
+                {Math.floor(timers[order.id].remaining / 60).toString().padStart(2, "0")}:
+                {(timers[order.id].remaining % 60).toString().padStart(2, "0")}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs h-8"
+                onClick={() => setTimers(prev => {
+                  const next = { ...prev };
+                  delete next[order.id];
+                  return next;
+                })}
+              >
+                Cancelar
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+      <Button variant="ghost" size="sm" onClick={() => handleExpandOrder(order.id)}>
+        {expandedOrder === order.id ? "Ocultar itens" : "Ver itens"}
+      </Button>
+      {expandedOrder === order.id && (
+        <div className="border-t pt-2 space-y-1">
+          {orderItems.map(item => (
+            <div key={item.id} className="flex justify-between text-sm">
+              <span>{item.quantity}x {item.product_name}</span>
+              <span className="text-muted-foreground">R$ {(item.quantity * Number(item.price)).toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   const tabs = [
-    { id: "orders" as Tab, label: "Pedidos", icon: ShoppingBag, count: orders.filter(o => o.status === "pending").length },
+    { id: "orders" as Tab, label: "Pedidos do dia", icon: ShoppingBag, count: todayOrders.filter(o => o.status === "pending").length },
+    { id: "orders-old" as Tab, label: "Pedidos anteriores", icon: ShoppingBag, count: olderOrders.length || undefined },
     { id: "products" as Tab, label: "Produtos", icon: Package },
     { id: "categories" as Tab, label: "Categorias", icon: FolderOpen },
   ];
@@ -283,139 +392,29 @@ export default function Dashboard() {
       </div>
 
       <main className="container py-6 space-y-6">
-        {/* ORDERS TAB */}
-        {activeTab === "orders" && (() => {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const todayOrders = orders.filter(o => new Date(o.created_at) >= today);
-          const olderOrders = orders.filter(o => new Date(o.created_at) < today);
+        {/* ORDERS TODAY TAB */}
+        {activeTab === "orders" && (
+          <div className="space-y-6">
+            <h2 className="font-display text-xl font-bold">Pedidos do dia — {new Date().toLocaleDateString("pt-BR")}</h2>
+            {todayOrders.length === 0 && <p className="text-muted-foreground">Nenhum pedido hoje.</p>}
+            <div className="space-y-3">
+              {todayOrders.map(renderOrder)}
+            </div>
+          </div>
+        )}
 
-          // Group older orders by date
+        {/* OLDER ORDERS TAB */}
+        {activeTab === "orders-old" && (() => {
           const olderGrouped: Record<string, typeof orders> = {};
           olderOrders.forEach(o => {
             const key = new Date(o.created_at).toLocaleDateString("pt-BR");
             if (!olderGrouped[key]) olderGrouped[key] = [];
             olderGrouped[key].push(o);
           });
-
-          const renderOrder = (order: typeof orders[0]) => (
-              <div key={order.id} className="rounded-xl border bg-card p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-semibold">{order.customer_name || "Cliente"}</p>
-                    <p className="text-sm font-medium text-primary">Mesa: {order.table_number || "—"}</p>
-                    {order.customer_phone && <p className="text-sm text-muted-foreground">Obs: {order.customer_phone}</p>}
-                    <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString("pt-BR")}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <Badge className={`${statusLabels[order.status]?.color} ${order.status === "pending" ? "animate-blink-pending" : ""}`}>
-                      {statusLabels[order.status]?.label}
-                    </Badge>
-                    <span className="font-display font-bold text-lg">R$ {Number(order.total).toFixed(2)}</span>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {["pending", "preparing", "done", "cancelled"].map(s => (
-                    <Button
-                      key={s}
-                      size="sm"
-                      variant={order.status === s ? "default" : "outline"}
-                      onClick={() => {
-                        updateOrderStatus.mutateAsync({ id: order.id, status: s });
-                        if (s !== "preparing") {
-                          setTimers(prev => {
-                            const next = { ...prev };
-                            delete next[order.id];
-                            return next;
-                          });
-                        }
-                      }}
-                      className="text-xs"
-                    >
-                      {statusLabels[s].label}
-                    </Button>
-                  ))}
-                </div>
-                {order.status === "preparing" && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {!timers[order.id] ? (
-                      <>
-                        <Timer className="h-4 w-4 text-info" />
-                        <Input
-                          type="number"
-                          placeholder="Min"
-                          className="w-20 h-8 text-xs"
-                          value={timerInput[order.id] || ""}
-                          onChange={e => setTimerInput(prev => ({ ...prev, [order.id]: e.target.value }))}
-                        />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs h-8"
-                          onClick={() => {
-                            const mins = parseInt(timerInput[order.id] || "0");
-                            if (mins > 0) {
-                              setTimers(prev => ({ ...prev, [order.id]: { total: mins * 60, remaining: mins * 60 } }));
-                            }
-                          }}
-                        >
-                          Iniciar
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Timer className={`h-4 w-4 ${timers[order.id].remaining === 0 ? "text-destructive animate-blink-pending" : "text-info"}`} />
-                        <span className={`font-mono text-sm font-bold ${timers[order.id].remaining === 0 ? "text-destructive" : ""}`}>
-                          {Math.floor(timers[order.id].remaining / 60).toString().padStart(2, "0")}:
-                          {(timers[order.id].remaining % 60).toString().padStart(2, "0")}
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-xs h-8"
-                          onClick={() => setTimers(prev => {
-                            const next = { ...prev };
-                            delete next[order.id];
-                            return next;
-                          })}
-                        >
-                          Cancelar
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                )}
-                <Button variant="ghost" size="sm" onClick={() => handleExpandOrder(order.id)}>
-                  {expandedOrder === order.id ? "Ocultar itens" : "Ver itens"}
-                </Button>
-                {expandedOrder === order.id && (
-                  <div className="border-t pt-2 space-y-1">
-                    {orderItems.map(item => (
-                      <div key={item.id} className="flex justify-between text-sm">
-                        <span>{item.quantity}x {item.product_name}</span>
-                        <span className="text-muted-foreground">R$ {(item.quantity * Number(item.price)).toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-          );
-
           return (
             <div className="space-y-6">
-              <h2 className="font-display text-xl font-bold">Pedidos</h2>
-              {orders.length === 0 && <p className="text-muted-foreground">Nenhum pedido ainda.</p>}
-
-              {todayOrders.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
-                    📅 Hoje — {new Date().toLocaleDateString("pt-BR")}
-                    <Badge variant="outline" className="text-xs">{todayOrders.length}</Badge>
-                  </h3>
-                  {todayOrders.map(renderOrder)}
-                </div>
-              )}
-
+              <h2 className="font-display text-xl font-bold">Pedidos anteriores</h2>
+              {olderOrders.length === 0 && <p className="text-muted-foreground">Nenhum pedido anterior.</p>}
               {Object.entries(olderGrouped).map(([date, dateOrders]) => (
                 <div key={date} className="space-y-3">
                   <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
