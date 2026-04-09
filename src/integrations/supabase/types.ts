@@ -93,6 +93,7 @@ export type Database = {
           created_at: string
           customer_name: string | null
           customer_phone: string | null
+          deleted_at: string | null
           id: string
           restaurant_id: string
           status: string
@@ -104,6 +105,7 @@ export type Database = {
           created_at?: string
           customer_name?: string | null
           customer_phone?: string | null
+          deleted_at?: string | null
           id?: string
           restaurant_id: string
           status?: string
@@ -115,6 +117,7 @@ export type Database = {
           created_at?: string
           customer_name?: string | null
           customer_phone?: string | null
+          deleted_at?: string | null
           id?: string
           restaurant_id?: string
           status?: string
@@ -198,6 +201,7 @@ export type Database = {
           name: string
           owner_id: string
           slug: string
+          trash_password: string | null
           updated_at: string
         }
         Insert: {
@@ -208,6 +212,7 @@ export type Database = {
           name: string
           owner_id: string
           slug: string
+          trash_password?: string | null
           updated_at?: string
         }
         Update: {
@@ -218,6 +223,7 @@ export type Database = {
           name?: string
           owner_id?: string
           slug?: string
+          trash_password?: string | null
           updated_at?: string
         }
         Relationships: []
