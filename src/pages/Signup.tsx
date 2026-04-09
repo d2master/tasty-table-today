@@ -73,6 +73,10 @@ export default function SignupPage() {
             <Input id="storeName" value={storeName} onChange={e => setStoreName(e.target.value)} required placeholder="Burger House" />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="trashPassword">Senha da Lixeira (4 dígitos)</Label>
+            <Input id="trashPassword" type="text" inputMode="numeric" maxLength={4} value={trashPassword} onChange={e => setTrashPassword(e.target.value.replace(/\D/g, "").slice(0, 4))} required placeholder="1234" />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="seu@email.com" />
           </div>
