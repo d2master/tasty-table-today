@@ -15,12 +15,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer } from "lucide-react";
+import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import type { OrderItem } from "@/hooks/useOrders";
 
-type Tab = "categories" | "products" | "orders" | "orders-old";
+type Tab = "orders" | "orders-old" | "trash" | "products" | "categories";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendente", color: "bg-warning text-warning-foreground" },
@@ -35,7 +35,7 @@ export default function Dashboard() {
   const { restaurant, isLoading: restLoading } = useRestaurant();
   const { categories, createCategory, updateCategory, deleteCategory } = useCategories(restaurant?.id);
   const { products, createProduct, updateProduct, deleteProduct } = useProducts(restaurant?.id);
-  const { orders, updateOrderStatus, getOrderItems } = useOrders(restaurant?.id);
+  const { orders, trashOrders, updateOrderStatus, softDeleteOrder, restoreOrder, permanentDeleteOrder, getOrderItems } = useOrders(restaurant?.id);
 
   const [activeTab, setActiveTab] = useState<Tab>("orders");
   const [newCatName, setNewCatName] = useState("");
@@ -53,9 +53,13 @@ export default function Dashboard() {
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
 
-  // Timer state: { [orderId]: { total: seconds, remaining: seconds } }
+  // Timer state
   const [timers, setTimers] = useState<Record<string, { total: number; remaining: number }>>({});
   const [timerInput, setTimerInput] = useState<Record<string, string>>({});
+
+  // Trash password dialog
+  const [deletePasswordDialog, setDeletePasswordDialog] = useState<{ open: boolean; orderId: string | null }>({ open: false, orderId: null });
+  const [deletePassword, setDeletePassword] = useState("");
 
   // Track order count for new-order sound
   const prevOrderCountRef = useRef<number | null>(null);
@@ -198,12 +202,40 @@ export default function Dashboard() {
     setExpandedOrder(orderId);
   };
 
+  const handleSoftDelete = async (orderId: string) => {
+    await softDeleteOrder.mutateAsync(orderId);
+    toast.success("Pedido movido para a lixeira!");
+  };
+
+  const handleRestore = async (orderId: string) => {
+    await restoreOrder.mutateAsync(orderId);
+    toast.success("Pedido restaurado!");
+  };
+
+  const handlePermanentDelete = async () => {
+    if (!deletePasswordDialog.orderId) return;
+    const trashPw = (restaurant as any).trash_password;
+    if (deletePassword !== trashPw) {
+      toast.error("Senha incorreta!");
+      return;
+    }
+    await permanentDeleteOrder.mutateAsync(deletePasswordDialog.orderId);
+    toast.success("Pedido excluído permanentemente!");
+    setDeletePasswordDialog({ open: false, orderId: null });
+    setDeletePassword("");
+  };
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayOrders = orders.filter(o => new Date(o.created_at) >= today);
   const olderOrders = orders.filter(o => new Date(o.created_at) < today);
 
-  const renderOrder = (order: typeof orders[0]) => (
+  // Filter trash: only show orders deleted within 30 days
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const validTrashOrders = trashOrders.filter(o => o.deleted_at && new Date(o.deleted_at) >= thirtyDaysAgo);
+
+  const renderOrder = (order: typeof orders[0], isTrash = false) => (
     <div key={order.id} className="rounded-xl border bg-card p-4 space-y-3">
       <div className="flex items-start justify-between">
         <div>
@@ -211,6 +243,9 @@ export default function Dashboard() {
           <p className="text-sm font-medium text-primary">Mesa: {order.table_number || "—"}</p>
           {order.customer_phone && <p className="text-sm text-muted-foreground">Obs: {order.customer_phone}</p>}
           <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString("pt-BR")}</p>
+          {isTrash && order.deleted_at && (
+            <p className="text-xs text-destructive">Excluído em: {new Date(order.deleted_at).toLocaleString("pt-BR")}</p>
+          )}
         </div>
         <div className="flex flex-col items-end gap-2">
           <Badge className={`${statusLabels[order.status]?.color} ${order.status === "pending" ? "animate-blink-pending" : ""}`}>
@@ -219,80 +254,112 @@ export default function Dashboard() {
           <span className="font-display font-bold text-lg">R$ {Number(order.total).toFixed(2)}</span>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {["pending", "preparing", "done", "cancelled"].map(s => (
-          <Button
-            key={s}
-            size="sm"
-            variant={order.status === s ? "default" : "outline"}
-            onClick={() => {
-              updateOrderStatus.mutateAsync({ id: order.id, status: s });
-              if (s !== "preparing") {
-                setTimers(prev => {
-                  const next = { ...prev };
-                  delete next[order.id];
-                  return next;
-                });
-              }
-            }}
-            className="text-xs"
-          >
-            {statusLabels[s].label}
-          </Button>
-        ))}
-      </div>
-      {order.status === "preparing" && (
-        <div className="flex items-center gap-2 flex-wrap">
-          {!timers[order.id] ? (
-            <>
-              <Timer className="h-4 w-4 text-info" />
-              <Input
-                type="number"
-                placeholder="Min"
-                className="w-20 h-8 text-xs"
-                value={timerInput[order.id] || ""}
-                onChange={e => setTimerInput(prev => ({ ...prev, [order.id]: e.target.value }))}
-              />
+
+      {!isTrash && (
+        <>
+          <div className="flex flex-wrap gap-2">
+            {["pending", "preparing", "done", "cancelled"].map(s => (
               <Button
+                key={s}
                 size="sm"
-                variant="outline"
-                className="text-xs h-8"
+                variant={order.status === s ? "default" : "outline"}
                 onClick={() => {
-                  const mins = parseInt(timerInput[order.id] || "0");
-                  if (mins > 0) {
-                    setTimers(prev => ({ ...prev, [order.id]: { total: mins * 60, remaining: mins * 60 } }));
+                  updateOrderStatus.mutateAsync({ id: order.id, status: s });
+                  if (s !== "preparing") {
+                    setTimers(prev => {
+                      const next = { ...prev };
+                      delete next[order.id];
+                      return next;
+                    });
                   }
                 }}
+                className="text-xs"
               >
-                Iniciar
+                {statusLabels[s].label}
               </Button>
-            </>
-          ) : (
-            <>
-              <Timer className={`h-4 w-4 ${timers[order.id].remaining === 0 ? "text-destructive animate-blink-pending" : "text-info"}`} />
-              <span className={`font-mono text-sm font-bold ${timers[order.id].remaining === 0 ? "text-destructive" : ""}`}>
-                {Math.floor(timers[order.id].remaining / 60).toString().padStart(2, "0")}:
-                {(timers[order.id].remaining % 60).toString().padStart(2, "0")}
-              </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-xs h-8"
-                onClick={() => setTimers(prev => {
-                  const next = { ...prev };
-                  delete next[order.id];
-                  return next;
-                })}
-              >
-                Cancelar
-              </Button>
-            </>
+            ))}
+          </div>
+          {order.status === "preparing" && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {!timers[order.id] ? (
+                <>
+                  <Timer className="h-4 w-4 text-info" />
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    className="w-20 h-8 text-xs"
+                    value={timerInput[order.id] || ""}
+                    onChange={e => setTimerInput(prev => ({ ...prev, [order.id]: e.target.value }))}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-8"
+                    onClick={() => {
+                      const mins = parseInt(timerInput[order.id] || "0");
+                      if (mins > 0) {
+                        setTimers(prev => ({ ...prev, [order.id]: { total: mins * 60, remaining: mins * 60 } }));
+                      }
+                    }}
+                  >
+                    Iniciar
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Timer className={`h-4 w-4 ${timers[order.id].remaining === 0 ? "text-destructive animate-blink-pending" : "text-info"}`} />
+                  <span className={`font-mono text-sm font-bold ${timers[order.id].remaining === 0 ? "text-destructive" : ""}`}>
+                    {Math.floor(timers[order.id].remaining / 60).toString().padStart(2, "0")}:
+                    {(timers[order.id].remaining % 60).toString().padStart(2, "0")}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs h-8"
+                    onClick={() => setTimers(prev => {
+                      const next = { ...prev };
+                      delete next[order.id];
+                      return next;
+                    })}
+                  >
+                    Cancelar
+                  </Button>
+                </>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
-      <Button variant="ghost" size="sm" onClick={() => handleExpandOrder(order.id)}>
-        {expandedOrder === order.id ? "Ocultar itens" : "Ver itens"}
-      </Button>
+
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm" onClick={() => handleExpandOrder(order.id)}>
+          {expandedOrder === order.id ? "Ocultar itens" : "Ver itens"}
+        </Button>
+        {!isTrash && (
+          <Button variant="ghost" size="sm" onClick={() => handleSoftDelete(order.id)} className="text-destructive hover:text-destructive">
+            <Trash2 className="h-4 w-4 mr-1" /> Excluir
+          </Button>
+        )}
+        {isTrash && (
+          <>
+            <Button variant="ghost" size="sm" onClick={() => handleRestore(order.id)} className="text-primary">
+              <RotateCcw className="h-4 w-4 mr-1" /> Restaurar
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={() => {
+                setDeletePasswordDialog({ open: true, orderId: order.id });
+                setDeletePassword("");
+              }}
+            >
+              <Trash2 className="h-4 w-4 mr-1" /> Excluir permanente
+            </Button>
+          </>
+        )}
+      </div>
+
       {expandedOrder === order.id && (
         <div className="border-t pt-2 space-y-1">
           {orderItems.map(item => (
@@ -309,6 +376,7 @@ export default function Dashboard() {
   const tabs = [
     { id: "orders" as Tab, label: "Pedidos do dia", icon: ShoppingBag, count: todayOrders.filter(o => o.status === "pending").length },
     { id: "orders-old" as Tab, label: "Pedidos anteriores", icon: ShoppingBag, count: olderOrders.length || undefined },
+    { id: "trash" as Tab, label: "Lixeira", icon: Trash2, count: validTrashOrders.length || undefined },
     { id: "products" as Tab, label: "Produtos", icon: Package },
     { id: "categories" as Tab, label: "Categorias", icon: FolderOpen },
   ];
@@ -398,7 +466,7 @@ export default function Dashboard() {
             <h2 className="font-display text-xl font-bold">Pedidos do dia — {new Date().toLocaleDateString("pt-BR")}</h2>
             {todayOrders.length === 0 && <p className="text-muted-foreground">Nenhum pedido hoje.</p>}
             <div className="space-y-3">
-              {todayOrders.map(renderOrder)}
+              {todayOrders.map(o => renderOrder(o))}
             </div>
           </div>
         )}
@@ -421,12 +489,24 @@ export default function Dashboard() {
                     📅 {date}
                     <Badge variant="outline" className="text-xs">{dateOrders.length}</Badge>
                   </h3>
-                  {dateOrders.map(renderOrder)}
+                  {dateOrders.map(o => renderOrder(o))}
                 </div>
               ))}
             </div>
           );
         })()}
+
+        {/* TRASH TAB */}
+        {activeTab === "trash" && (
+          <div className="space-y-6">
+            <h2 className="font-display text-xl font-bold">🗑️ Lixeira</h2>
+            <p className="text-sm text-muted-foreground">Pedidos excluídos ficam aqui por até 30 dias. Após isso, são removidos automaticamente.</p>
+            {validTrashOrders.length === 0 && <p className="text-muted-foreground">Nenhum pedido na lixeira.</p>}
+            <div className="space-y-3">
+              {validTrashOrders.map(o => renderOrder(o, true))}
+            </div>
+          </div>
+        )}
 
         {/* CATEGORIES TAB */}
         {activeTab === "categories" && (
@@ -538,6 +618,31 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+
+      {/* Password dialog for permanent delete */}
+      <Dialog open={deletePasswordDialog.open} onOpenChange={open => { if (!open) { setDeletePasswordDialog({ open: false, orderId: null }); setDeletePassword(""); } }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Confirmar exclusão permanente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">Digite a senha da lixeira (4 dígitos) para excluir permanentemente.</p>
+            <Input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              placeholder="****"
+              value={deletePassword}
+              onChange={e => setDeletePassword(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              className="text-center text-lg tracking-widest"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setDeletePasswordDialog({ open: false, orderId: null }); setDeletePassword(""); }}>Cancelar</Button>
+            <Button variant="destructive" onClick={handlePermanentDelete} disabled={deletePassword.length !== 4}>Excluir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
