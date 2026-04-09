@@ -21,6 +21,10 @@ export default function SignupPage() {
       toast.error("Nome da lanchonete deve ter no mínimo 3 caracteres");
       return;
     }
+    if (!/^\d{4}$/.test(trashPassword)) {
+      toast.error("A senha da lixeira deve ter exatamente 4 dígitos numéricos");
+      return;
+    }
     setLoading(true);
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
