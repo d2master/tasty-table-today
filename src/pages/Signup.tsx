@@ -45,6 +45,7 @@ export default function SignupPage() {
         name: storeName,
         slug,
         owner_id: authData.user.id,
+        trash_password: trashPassword,
       });
 
       if (restaurantError) {
