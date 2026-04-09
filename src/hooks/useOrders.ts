@@ -12,6 +12,7 @@ export interface Order {
   total: number;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface OrderItem {
@@ -26,6 +27,7 @@ export interface OrderItem {
 export function useOrders(restaurantId: string | undefined) {
   const queryClient = useQueryClient();
 
+  // Active orders (not deleted)
   const ordersQuery = useQuery({
     queryKey: ["orders", restaurantId],
     queryFn: async () => {
@@ -33,7 +35,24 @@ export function useOrders(restaurantId: string | undefined) {
         .from("orders")
         .select("*")
         .eq("restaurant_id", restaurantId!)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as Order[];
+    },
+    enabled: !!restaurantId,
+  });
+
+  // Trash orders
+  const trashQuery = useQuery({
+    queryKey: ["orders-trash", restaurantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("restaurant_id", restaurantId!)
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false });
       if (error) throw error;
       return data as Order[];
     },
@@ -47,6 +66,7 @@ export function useOrders(restaurantId: string | undefined) {
       .channel("orders-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `restaurant_id=eq.${restaurantId}` }, () => {
         queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
+        queryClient.invalidateQueries({ queryKey: ["orders-trash", restaurantId] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -60,6 +80,38 @@ export function useOrders(restaurantId: string | undefined) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] }),
   });
 
+  const softDeleteOrder = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("orders").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ["orders-trash", restaurantId] });
+    },
+  });
+
+  const restoreOrder = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("orders").update({ deleted_at: null }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ["orders-trash", restaurantId] });
+    },
+  });
+
+  const permanentDeleteOrder = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("orders").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders-trash", restaurantId] });
+    },
+  });
+
   const getOrderItems = async (orderId: string) => {
     const { data, error } = await supabase
       .from("order_items")
@@ -69,5 +121,14 @@ export function useOrders(restaurantId: string | undefined) {
     return data as OrderItem[];
   };
 
-  return { orders: ordersQuery.data ?? [], isLoading: ordersQuery.isLoading, updateOrderStatus, getOrderItems };
+  return {
+    orders: ordersQuery.data ?? [],
+    trashOrders: trashQuery.data ?? [],
+    isLoading: ordersQuery.isLoading,
+    updateOrderStatus,
+    softDeleteOrder,
+    restoreOrder,
+    permanentDeleteOrder,
+    getOrderItems,
+  };
 }

@@ -11,6 +11,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [storeName, setStoreName] = useState("");
+  const [trashPassword, setTrashPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -18,6 +19,10 @@ export default function SignupPage() {
     e.preventDefault();
     if (storeName.trim().length < 3) {
       toast.error("Nome da lanchonete deve ter no mínimo 3 caracteres");
+      return;
+    }
+    if (!/^\d{4}$/.test(trashPassword)) {
+      toast.error("A senha da lixeira deve ter exatamente 4 dígitos numéricos");
       return;
     }
     setLoading(true);
@@ -40,6 +45,7 @@ export default function SignupPage() {
         name: storeName,
         slug,
         owner_id: authData.user.id,
+        trash_password: trashPassword,
       });
 
       if (restaurantError) {
@@ -65,6 +71,10 @@ export default function SignupPage() {
           <div className="space-y-2">
             <Label htmlFor="storeName">Nome da Lanchonete</Label>
             <Input id="storeName" value={storeName} onChange={e => setStoreName(e.target.value)} required placeholder="Burger House" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="trashPassword">Senha da Lixeira (4 dígitos)</Label>
+            <Input id="trashPassword" type="text" inputMode="numeric" maxLength={4} value={trashPassword} onChange={e => setTrashPassword(e.target.value.replace(/\D/g, "").slice(0, 4))} required placeholder="1234" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
