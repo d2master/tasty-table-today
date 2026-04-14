@@ -383,6 +383,7 @@ export default function Dashboard() {
     { id: "orders" as Tab, label: "Pedidos do dia", icon: ShoppingBag, count: todayOrders.filter(o => o.status === "pending").length },
     { id: "orders-old" as Tab, label: "Pedidos anteriores", icon: ShoppingBag, count: olderOrders.length || undefined },
     { id: "trash" as Tab, label: "Lixeira", icon: Trash2, count: validTrashOrders.length || undefined },
+    { id: "blocked" as Tab, label: "Usuários", icon: Users, count: blockedCustomers.length || undefined },
     { id: "products" as Tab, label: "Produtos", icon: Package },
     { id: "categories" as Tab, label: "Categorias", icon: FolderOpen },
   ];
