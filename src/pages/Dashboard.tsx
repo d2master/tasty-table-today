@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useRestaurant } from "@/hooks/useRestaurant";
@@ -262,7 +263,7 @@ export default function Dashboard() {
     }
   };
 
-  today.setHours(0, 0, 0, 0);
+  const today = new Date();
   const todayOrders = orders.filter(o => new Date(o.created_at) >= today);
   const olderOrders = orders.filter(o => new Date(o.created_at) < today);
 
