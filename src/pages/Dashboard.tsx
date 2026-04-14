@@ -232,7 +232,36 @@ export default function Dashboard() {
     setDeletePassword("");
   };
 
-  const today = new Date();
+  const handleVerifyAccountPassword = async () => {
+    if (!user?.email) return;
+    setVerifying(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: accountPassword });
+      if (error) {
+        toast.error("Senha da conta incorreta!");
+        return;
+      }
+      setResetStep("newpass");
+    } catch {
+      toast.error("Erro ao verificar senha.");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleResetTrashPassword = async () => {
+    try {
+      await updateTrashPassword.mutateAsync(newTrashPassword);
+      toast.success("Senha da lixeira redefinida com sucesso!");
+      setResetTrashDialog(false);
+      setAccountPassword("");
+      setNewTrashPassword("");
+      setResetStep("verify");
+    } catch {
+      toast.error("Erro ao redefinir senha.");
+    }
+  };
+
   today.setHours(0, 0, 0, 0);
   const todayOrders = orders.filter(o => new Date(o.created_at) >= today);
   const olderOrders = orders.filter(o => new Date(o.created_at) < today);
