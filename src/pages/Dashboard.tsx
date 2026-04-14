@@ -32,7 +32,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 export default function Dashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
-  const { restaurant, isLoading: restLoading } = useRestaurant();
+  const { restaurant, isLoading: restLoading, updateTrashPassword } = useRestaurant();
   const { categories, createCategory, updateCategory, deleteCategory } = useCategories(restaurant?.id);
   const { products, createProduct, updateProduct, deleteProduct } = useProducts(restaurant?.id);
   const { orders, trashOrders, updateOrderStatus, softDeleteOrder, restoreOrder, permanentDeleteOrder, getOrderItems } = useOrders(restaurant?.id);
