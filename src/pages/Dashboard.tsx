@@ -539,6 +539,9 @@ export default function Dashboard() {
           <div className="space-y-6">
             <h2 className="font-display text-xl font-bold">🗑️ Lixeira</h2>
             <p className="text-sm text-muted-foreground">Pedidos excluídos ficam aqui por até 30 dias. Após isso, são removidos automaticamente.</p>
+            <Button variant="outline" size="sm" onClick={() => { setResetTrashDialog(true); setResetStep("verify"); setAccountPassword(""); setNewTrashPassword(""); }}>
+              🔑 Redefinir senha da lixeira
+            </Button>
             {validTrashOrders.length === 0 && <p className="text-muted-foreground">Nenhum pedido na lixeira.</p>}
             <div className="space-y-3">
               {validTrashOrders.map(o => renderOrder(o, true))}
@@ -679,6 +682,49 @@ export default function Dashboard() {
             <Button variant="outline" onClick={() => { setDeletePasswordDialog({ open: false, orderId: null }); setDeletePassword(""); }}>Cancelar</Button>
             <Button variant="destructive" onClick={handlePermanentDelete} disabled={deletePassword.length !== 4}>Excluir</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset trash password dialog */}
+      <Dialog open={resetTrashDialog} onOpenChange={open => { if (!open) { setResetTrashDialog(false); setResetStep("verify"); setAccountPassword(""); setNewTrashPassword(""); } }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Redefinir senha da lixeira</DialogTitle>
+          </DialogHeader>
+          {resetStep === "verify" ? (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">Para sua segurança, confirme a senha da sua conta.</p>
+              <Input
+                type="password"
+                placeholder="Senha da conta"
+                value={accountPassword}
+                onChange={e => setAccountPassword(e.target.value)}
+              />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setResetTrashDialog(false)}>Cancelar</Button>
+                <Button onClick={handleVerifyAccountPassword} disabled={!accountPassword || verifying}>
+                  {verifying ? "Verificando..." : "Confirmar"}
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">Digite a nova senha da lixeira (4 dígitos numéricos).</p>
+              <Input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="****"
+                value={newTrashPassword}
+                onChange={e => setNewTrashPassword(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                className="text-center text-lg tracking-widest"
+              />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setResetTrashDialog(false)}>Cancelar</Button>
+                <Button onClick={handleResetTrashPassword} disabled={newTrashPassword.length !== 4}>Salvar</Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
