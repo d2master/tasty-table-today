@@ -15,12 +15,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw } from "lucide-react";
+import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw, UserX, Users } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { useBlockedCustomers } from "@/hooks/useBlockedCustomers";
 import type { OrderItem } from "@/hooks/useOrders";
 
-type Tab = "orders" | "orders-old" | "trash" | "products" | "categories";
+type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "blocked";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendente", color: "bg-warning text-warning-foreground" },
@@ -36,6 +37,7 @@ export default function Dashboard() {
   const { categories, createCategory, updateCategory, deleteCategory } = useCategories(restaurant?.id);
   const { products, createProduct, updateProduct, deleteProduct } = useProducts(restaurant?.id);
   const { orders, trashOrders, updateOrderStatus, softDeleteOrder, restoreOrder, permanentDeleteOrder, getOrderItems } = useOrders(restaurant?.id);
+  const { blockedCustomers, blockCustomer, unblockCustomer } = useBlockedCustomers(restaurant?.id);
 
   const [activeTab, setActiveTab] = useState<Tab>("orders");
   const [newCatName, setNewCatName] = useState("");
@@ -60,6 +62,10 @@ export default function Dashboard() {
   // Trash password dialog
   const [deletePasswordDialog, setDeletePasswordDialog] = useState<{ open: boolean; orderId: string | null }>({ open: false, orderId: null });
   const [deletePassword, setDeletePassword] = useState("");
+
+  // Block customer form
+  const [blockPhone, setBlockPhone] = useState("");
+  const [blockReason, setBlockReason] = useState("");
 
   // Track order count for new-order sound
   const prevOrderCountRef = useRef<number | null>(null);
