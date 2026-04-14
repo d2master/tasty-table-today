@@ -61,6 +61,13 @@ export default function Dashboard() {
   const [deletePasswordDialog, setDeletePasswordDialog] = useState<{ open: boolean; orderId: string | null }>({ open: false, orderId: null });
   const [deletePassword, setDeletePassword] = useState("");
 
+  // Reset trash password dialog
+  const [resetTrashDialog, setResetTrashDialog] = useState(false);
+  const [accountPassword, setAccountPassword] = useState("");
+  const [newTrashPassword, setNewTrashPassword] = useState("");
+  const [resetStep, setResetStep] = useState<"verify" | "newpass">("verify");
+  const [verifying, setVerifying] = useState(false);
+
   // Track order count for new-order sound
   const prevOrderCountRef = useRef<number | null>(null);
 
