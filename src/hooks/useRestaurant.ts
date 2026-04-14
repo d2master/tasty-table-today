@@ -34,5 +34,16 @@ export function useRestaurant() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["restaurant"] }),
   });
 
-  return { restaurant: restaurantQuery.data, isLoading: restaurantQuery.isLoading, createRestaurant };
+  const updateTrashPassword = useMutation({
+    mutationFn: async (newPassword: string) => {
+      const { error } = await supabase
+        .from("restaurants")
+        .update({ trash_password: newPassword })
+        .eq("id", restaurantQuery.data!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["restaurant"] }),
+  });
+
+  return { restaurant: restaurantQuery.data, isLoading: restaurantQuery.isLoading, createRestaurant, updateTrashPassword };
 }
