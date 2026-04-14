@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      blocked_customers: {
+        Row: {
+          blocked_at: string
+          customer_phone: string
+          id: string
+          reason: string | null
+          restaurant_id: string
+        }
+        Insert: {
+          blocked_at?: string
+          customer_phone: string
+          id?: string
+          reason?: string | null
+          restaurant_id: string
+        }
+        Update: {
+          blocked_at?: string
+          customer_phone?: string
+          id?: string
+          reason?: string | null
+          restaurant_id?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -233,6 +257,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      is_customer_blocked: {
+        Args: { _phone: string; _restaurant_id: string }
+        Returns: boolean
+      }
       is_restaurant_owner: {
         Args: { _restaurant_id: string }
         Returns: boolean
