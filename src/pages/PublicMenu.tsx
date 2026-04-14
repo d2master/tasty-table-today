@@ -103,16 +103,6 @@ export default function PublicMenu() {
     setSubmitting(true);
 
     try {
-      // Check if this table is blocked
-      const { data: isBlocked } = await supabase.rpc("is_customer_blocked", {
-        _restaurant_id: restaurant!.id,
-        _phone: tableNumber.trim(),
-      });
-      if (isBlocked) {
-        toast.error("Esta mesa está bloqueada. Entre em contato com o estabelecimento.");
-        setSubmitting(false);
-        return;
-      }
       const orderId = crypto.randomUUID();
 
       const { error: orderError } = await supabase

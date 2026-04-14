@@ -15,13 +15,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw, UserX, Users } from "lucide-react";
+import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { useBlockedCustomers } from "@/hooks/useBlockedCustomers";
 import type { OrderItem } from "@/hooks/useOrders";
 
-type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "blocked";
+type Tab = "orders" | "orders-old" | "trash" | "products" | "categories";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendente", color: "bg-warning text-warning-foreground" },
@@ -37,7 +36,6 @@ export default function Dashboard() {
   const { categories, createCategory, updateCategory, deleteCategory } = useCategories(restaurant?.id);
   const { products, createProduct, updateProduct, deleteProduct } = useProducts(restaurant?.id);
   const { orders, trashOrders, updateOrderStatus, softDeleteOrder, restoreOrder, permanentDeleteOrder, getOrderItems } = useOrders(restaurant?.id);
-  const { blockedCustomers, blockCustomer, unblockCustomer } = useBlockedCustomers(restaurant?.id);
 
   const [activeTab, setActiveTab] = useState<Tab>("orders");
   const [newCatName, setNewCatName] = useState("");
@@ -62,10 +60,6 @@ export default function Dashboard() {
   // Trash password dialog
   const [deletePasswordDialog, setDeletePasswordDialog] = useState<{ open: boolean; orderId: string | null }>({ open: false, orderId: null });
   const [deletePassword, setDeletePassword] = useState("");
-
-  // Block customer form
-  const [blockPhone, setBlockPhone] = useState("");
-  const [blockReason, setBlockReason] = useState("");
 
   // Track order count for new-order sound
   const prevOrderCountRef = useRef<number | null>(null);
@@ -383,7 +377,6 @@ export default function Dashboard() {
     { id: "orders" as Tab, label: "Pedidos do dia", icon: ShoppingBag, count: todayOrders.filter(o => o.status === "pending").length },
     { id: "orders-old" as Tab, label: "Pedidos anteriores", icon: ShoppingBag, count: olderOrders.length || undefined },
     { id: "trash" as Tab, label: "Lixeira", icon: Trash2, count: validTrashOrders.length || undefined },
-    { id: "blocked" as Tab, label: "Usuários", icon: Users, count: blockedCustomers.length || undefined },
     { id: "products" as Tab, label: "Produtos", icon: Package },
     { id: "categories" as Tab, label: "Categorias", icon: FolderOpen },
   ];
@@ -511,73 +504,6 @@ export default function Dashboard() {
             {validTrashOrders.length === 0 && <p className="text-muted-foreground">Nenhum pedido na lixeira.</p>}
             <div className="space-y-3">
               {validTrashOrders.map(o => renderOrder(o, true))}
-            </div>
-          </div>
-        )}
-
-        {/* BLOCKED CUSTOMERS TAB */}
-        {activeTab === "blocked" && (
-          <div className="space-y-4">
-            <h2 className="font-display text-xl font-bold">👥 Gerenciar Usuários</h2>
-            <p className="text-sm text-muted-foreground">Bloqueie clientes pelo número da mesa para impedir novos pedidos.</p>
-            
-            <div className="rounded-xl border bg-card p-4 space-y-3">
-              <h3 className="font-semibold text-sm">Bloquear novo usuário</h3>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Input
-                  placeholder="Número da mesa (ex: 5)"
-                  value={blockPhone}
-                  onChange={e => setBlockPhone(e.target.value)}
-                />
-                <Input
-                  placeholder="Motivo (opcional)"
-                  value={blockReason}
-                  onChange={e => setBlockReason(e.target.value)}
-                />
-                <Button
-                  onClick={async () => {
-                    if (!blockPhone.trim()) { toast.error("Informe o número da mesa"); return; }
-                    try {
-                      await blockCustomer.mutateAsync({ phone: blockPhone.trim(), reason: blockReason.trim() });
-                      toast.success("Usuário bloqueado!");
-                      setBlockPhone("");
-                      setBlockReason("");
-                    } catch (err: any) {
-                      if (err.message?.includes("duplicate")) toast.error("Usuário já está bloqueado");
-                      else toast.error(err.message);
-                    }
-                  }}
-                  disabled={blockCustomer.isPending}
-                  className="whitespace-nowrap"
-                >
-                  <UserX className="h-4 w-4 mr-1" /> Bloquear
-                </Button>
-              </div>
-            </div>
-
-            {blockedCustomers.length === 0 && <p className="text-muted-foreground">Nenhum usuário bloqueado.</p>}
-            
-            <div className="space-y-2">
-              {blockedCustomers.map(bc => (
-                <div key={bc.id} className="flex items-center justify-between rounded-lg border bg-card p-3">
-                  <div>
-                    <p className="font-medium">Mesa: {bc.customer_phone}</p>
-                    {bc.reason && <p className="text-sm text-muted-foreground">Motivo: {bc.reason}</p>}
-                    <p className="text-xs text-muted-foreground">Bloqueado em: {new Date(bc.blocked_at).toLocaleString("pt-BR")}</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      await unblockCustomer.mutateAsync(bc.id);
-                      toast.success("Usuário desbloqueado!");
-                    }}
-                    disabled={unblockCustomer.isPending}
-                  >
-                    Desbloquear
-                  </Button>
-                </div>
-              ))}
             </div>
           </div>
         )}
