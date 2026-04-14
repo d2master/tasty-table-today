@@ -515,6 +515,73 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* BLOCKED CUSTOMERS TAB */}
+        {activeTab === "blocked" && (
+          <div className="space-y-4">
+            <h2 className="font-display text-xl font-bold">👥 Gerenciar Usuários</h2>
+            <p className="text-sm text-muted-foreground">Bloqueie clientes pelo número da mesa para impedir novos pedidos.</p>
+            
+            <div className="rounded-xl border bg-card p-4 space-y-3">
+              <h3 className="font-semibold text-sm">Bloquear novo usuário</h3>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  placeholder="Número da mesa (ex: 5)"
+                  value={blockPhone}
+                  onChange={e => setBlockPhone(e.target.value)}
+                />
+                <Input
+                  placeholder="Motivo (opcional)"
+                  value={blockReason}
+                  onChange={e => setBlockReason(e.target.value)}
+                />
+                <Button
+                  onClick={async () => {
+                    if (!blockPhone.trim()) { toast.error("Informe o número da mesa"); return; }
+                    try {
+                      await blockCustomer.mutateAsync({ phone: blockPhone.trim(), reason: blockReason.trim() });
+                      toast.success("Usuário bloqueado!");
+                      setBlockPhone("");
+                      setBlockReason("");
+                    } catch (err: any) {
+                      if (err.message?.includes("duplicate")) toast.error("Usuário já está bloqueado");
+                      else toast.error(err.message);
+                    }
+                  }}
+                  disabled={blockCustomer.isPending}
+                  className="whitespace-nowrap"
+                >
+                  <UserX className="h-4 w-4 mr-1" /> Bloquear
+                </Button>
+              </div>
+            </div>
+
+            {blockedCustomers.length === 0 && <p className="text-muted-foreground">Nenhum usuário bloqueado.</p>}
+            
+            <div className="space-y-2">
+              {blockedCustomers.map(bc => (
+                <div key={bc.id} className="flex items-center justify-between rounded-lg border bg-card p-3">
+                  <div>
+                    <p className="font-medium">Mesa: {bc.customer_phone}</p>
+                    {bc.reason && <p className="text-sm text-muted-foreground">Motivo: {bc.reason}</p>}
+                    <p className="text-xs text-muted-foreground">Bloqueado em: {new Date(bc.blocked_at).toLocaleString("pt-BR")}</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      await unblockCustomer.mutateAsync(bc.id);
+                      toast.success("Usuário desbloqueado!");
+                    }}
+                    disabled={unblockCustomer.isPending}
+                  >
+                    Desbloquear
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* CATEGORIES TAB */}
         {activeTab === "categories" && (
           <div className="space-y-4">
