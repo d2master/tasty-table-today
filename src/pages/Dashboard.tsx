@@ -264,6 +264,7 @@ export default function Dashboard() {
   };
 
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
   const todayOrders = orders.filter(o => new Date(o.created_at) >= today);
   const olderOrders = orders.filter(o => new Date(o.created_at) < today);
 
