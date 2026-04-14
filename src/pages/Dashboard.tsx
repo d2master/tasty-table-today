@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useRestaurant } from "@/hooks/useRestaurant";
@@ -32,7 +33,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 export default function Dashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
-  const { restaurant, isLoading: restLoading } = useRestaurant();
+  const { restaurant, isLoading: restLoading, updateTrashPassword } = useRestaurant();
   const { categories, createCategory, updateCategory, deleteCategory } = useCategories(restaurant?.id);
   const { products, createProduct, updateProduct, deleteProduct } = useProducts(restaurant?.id);
   const { orders, trashOrders, updateOrderStatus, softDeleteOrder, restoreOrder, permanentDeleteOrder, getOrderItems } = useOrders(restaurant?.id);
@@ -60,6 +61,13 @@ export default function Dashboard() {
   // Trash password dialog
   const [deletePasswordDialog, setDeletePasswordDialog] = useState<{ open: boolean; orderId: string | null }>({ open: false, orderId: null });
   const [deletePassword, setDeletePassword] = useState("");
+
+  // Reset trash password dialog
+  const [resetTrashDialog, setResetTrashDialog] = useState(false);
+  const [accountPassword, setAccountPassword] = useState("");
+  const [newTrashPassword, setNewTrashPassword] = useState("");
+  const [resetStep, setResetStep] = useState<"verify" | "newpass">("verify");
+  const [verifying, setVerifying] = useState(false);
 
   // Track order count for new-order sound
   const prevOrderCountRef = useRef<number | null>(null);
@@ -223,6 +231,36 @@ export default function Dashboard() {
     toast.success("Pedido excluído permanentemente!");
     setDeletePasswordDialog({ open: false, orderId: null });
     setDeletePassword("");
+  };
+
+  const handleVerifyAccountPassword = async () => {
+    if (!user?.email) return;
+    setVerifying(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: accountPassword });
+      if (error) {
+        toast.error("Senha da conta incorreta!");
+        return;
+      }
+      setResetStep("newpass");
+    } catch {
+      toast.error("Erro ao verificar senha.");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleResetTrashPassword = async () => {
+    try {
+      await updateTrashPassword.mutateAsync(newTrashPassword);
+      toast.success("Senha da lixeira redefinida com sucesso!");
+      setResetTrashDialog(false);
+      setAccountPassword("");
+      setNewTrashPassword("");
+      setResetStep("verify");
+    } catch {
+      toast.error("Erro ao redefinir senha.");
+    }
   };
 
   const today = new Date();
@@ -501,6 +539,9 @@ export default function Dashboard() {
           <div className="space-y-6">
             <h2 className="font-display text-xl font-bold">🗑️ Lixeira</h2>
             <p className="text-sm text-muted-foreground">Pedidos excluídos ficam aqui por até 30 dias. Após isso, são removidos automaticamente.</p>
+            <Button variant="outline" size="sm" onClick={() => { setResetTrashDialog(true); setResetStep("verify"); setAccountPassword(""); setNewTrashPassword(""); }}>
+              🔑 Redefinir senha da lixeira
+            </Button>
             {validTrashOrders.length === 0 && <p className="text-muted-foreground">Nenhum pedido na lixeira.</p>}
             <div className="space-y-3">
               {validTrashOrders.map(o => renderOrder(o, true))}
@@ -641,6 +682,49 @@ export default function Dashboard() {
             <Button variant="outline" onClick={() => { setDeletePasswordDialog({ open: false, orderId: null }); setDeletePassword(""); }}>Cancelar</Button>
             <Button variant="destructive" onClick={handlePermanentDelete} disabled={deletePassword.length !== 4}>Excluir</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset trash password dialog */}
+      <Dialog open={resetTrashDialog} onOpenChange={open => { if (!open) { setResetTrashDialog(false); setResetStep("verify"); setAccountPassword(""); setNewTrashPassword(""); } }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Redefinir senha da lixeira</DialogTitle>
+          </DialogHeader>
+          {resetStep === "verify" ? (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">Para sua segurança, confirme a senha da sua conta.</p>
+              <Input
+                type="password"
+                placeholder="Senha da conta"
+                value={accountPassword}
+                onChange={e => setAccountPassword(e.target.value)}
+              />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setResetTrashDialog(false)}>Cancelar</Button>
+                <Button onClick={handleVerifyAccountPassword} disabled={!accountPassword || verifying}>
+                  {verifying ? "Verificando..." : "Confirmar"}
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">Digite a nova senha da lixeira (4 dígitos numéricos).</p>
+              <Input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="****"
+                value={newTrashPassword}
+                onChange={e => setNewTrashPassword(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                className="text-center text-lg tracking-widest"
+              />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setResetTrashDialog(false)}>Cancelar</Button>
+                <Button onClick={handleResetTrashPassword} disabled={newTrashPassword.length !== 4}>Salvar</Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
