@@ -159,6 +159,14 @@ export default function PublicMenu() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando cardápio...</div>;
   if (notFound) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Lanchonete não encontrada</div>;
+  if (blocked) return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center space-y-2">
+        <h1 className="text-2xl font-bold text-foreground">Lanchonete Indisponível</h1>
+        <p className="text-muted-foreground">Esta lanchonete está temporariamente indisponível.</p>
+      </div>
+    </div>
+  );
 
   const filteredProducts = activeCategory ? products.filter(p => p.category_id === activeCategory) : products;
 
