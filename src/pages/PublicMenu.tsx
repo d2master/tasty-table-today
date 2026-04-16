@@ -14,6 +14,7 @@ interface Restaurant {
   name: string;
   slug: string;
   description: string | null;
+  is_blocked?: boolean;
 }
 
 interface Category {
@@ -44,6 +45,7 @@ export default function PublicMenu() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [blocked, setBlocked] = useState(false);
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
@@ -58,6 +60,7 @@ export default function PublicMenu() {
     (async () => {
       const { data: rest } = await supabase.from("restaurants").select("*").eq("slug", slug).maybeSingle();
       if (!rest) { setNotFound(true); setLoading(false); return; }
+      if (rest.is_blocked) { setBlocked(true); setLoading(false); return; }
       setRestaurant(rest);
 
       const [catRes, prodRes] = await Promise.all([
@@ -156,6 +159,14 @@ export default function PublicMenu() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando cardápio...</div>;
   if (notFound) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Lanchonete não encontrada</div>;
+  if (blocked) return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center space-y-2">
+        <h1 className="text-2xl font-bold text-foreground">Lanchonete Indisponível</h1>
+        <p className="text-muted-foreground">Esta lanchonete está temporariamente indisponível.</p>
+      </div>
+    </div>
+  );
 
   const filteredProducts = activeCategory ? products.filter(p => p.category_id === activeCategory) : products;
 
