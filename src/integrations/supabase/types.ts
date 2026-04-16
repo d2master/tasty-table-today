@@ -14,24 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      admin_users: {
-        Row: {
-          created_at: string
-          id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       blocked_customers: {
         Row: {
           blocked_at: string
@@ -239,7 +221,6 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
-          is_blocked: boolean
           logo_url: string | null
           name: string
           owner_id: string
@@ -251,7 +232,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          is_blocked?: boolean
           logo_url?: string | null
           name: string
           owner_id: string
@@ -263,7 +243,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          is_blocked?: boolean
           logo_url?: string | null
           name?: string
           owner_id?: string
@@ -282,7 +261,6 @@ export type Database = {
         Args: { _phone: string; _restaurant_id: string }
         Returns: boolean
       }
-      is_platform_admin: { Args: never; Returns: boolean }
       is_restaurant_owner: {
         Args: { _restaurant_id: string }
         Returns: boolean

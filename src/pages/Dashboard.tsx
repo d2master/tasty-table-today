@@ -116,18 +116,6 @@ export default function Dashboard() {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Nenhuma lanchonete encontrada.</div>;
   }
 
-  if ((restaurant as any).is_blocked) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold text-foreground">Lanchonete Bloqueada</h1>
-          <p className="text-muted-foreground">Sua lanchonete foi bloqueada pela administração. Entre em contato para mais informações.</p>
-          <Button variant="outline" onClick={signOut}>Sair</Button>
-        </div>
-      </div>
-    );
-  }
-
   const menuUrl = `${window.location.origin}/cardapio/${restaurant.slug}`;
 
   const handleAddCategory = async () => {

@@ -11,7 +11,6 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import PublicMenu from "./pages/PublicMenu";
-import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -28,7 +27,6 @@ const App = () => (
           <Route path="/esqueci-senha" element={<ForgotPassword />} />
           <Route path="/redefinir-senha" element={<ResetPassword />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/admin" element={<Admin />} />
           <Route path="/cardapio/:slug" element={<PublicMenu />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
