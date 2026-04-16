@@ -60,6 +60,7 @@ export default function PublicMenu() {
     (async () => {
       const { data: rest } = await supabase.from("restaurants").select("*").eq("slug", slug).maybeSingle();
       if (!rest) { setNotFound(true); setLoading(false); return; }
+      if (rest.is_blocked) { setBlocked(true); setLoading(false); return; }
       setRestaurant(rest);
 
       const [catRes, prodRes] = await Promise.all([
