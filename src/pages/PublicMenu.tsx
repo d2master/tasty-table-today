@@ -14,6 +14,7 @@ interface Restaurant {
   name: string;
   slug: string;
   description: string | null;
+  is_blocked?: boolean;
 }
 
 interface Category {
