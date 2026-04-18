@@ -33,15 +33,8 @@ Deno.serve(async (req) => {
       if (createErr) throw createErr;
       userId = created.user!.id;
       console.log("Admin user criado:", userId);
-    } else {
-      // Garante que a senha está correta e o email confirmado
-      const { error: updErr } = await supabase.auth.admin.updateUserById(userId, {
-        password: ADMIN_PASSWORD,
-        email_confirm: true,
-      });
-      if (updErr) throw updErr;
-      console.log("Senha do admin sincronizada:", userId);
     }
+    // Não sobrescreve a senha de um admin já existente — respeita redefinições feitas pelo usuário
 
     // Garante registro em admin_users (idempotente — respeita o singleton index)
     const { data: anyAdmin } = await supabase
