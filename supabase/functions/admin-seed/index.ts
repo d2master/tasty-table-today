@@ -43,18 +43,25 @@ Deno.serve(async (req) => {
       console.log("Senha do admin sincronizada:", userId);
     }
 
-    // Garante registro em admin_users
-    const { data: adminRow } = await supabase
+    // Garante registro em admin_users (idempotente — respeita o singleton index)
+    const { data: anyAdmin } = await supabase
       .from("admin_users")
-      .select("id")
-      .eq("user_id", userId)
+      .select("id, user_id")
+      .limit(1)
       .maybeSingle();
 
-    if (!adminRow) {
+    if (!anyAdmin) {
       const { error: insertErr } = await supabase
         .from("admin_users")
         .insert({ user_id: userId });
       if (insertErr) throw insertErr;
+    } else if (anyAdmin.user_id !== userId) {
+      // Já existe um admin diferente — atualiza para apontar para o user correto
+      const { error: updErr } = await supabase
+        .from("admin_users")
+        .update({ user_id: userId })
+        .eq("id", anyAdmin.id);
+      if (updErr) throw updErr;
     }
 
     return new Response(
