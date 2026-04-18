@@ -14,6 +14,7 @@ interface Restaurant {
   name: string;
   slug: string;
   description: string | null;
+  is_blocked?: boolean;
 }
 
 interface Category {
@@ -59,6 +60,7 @@ export default function PublicMenu() {
       const { data: rest } = await supabase.from("restaurants").select("*").eq("slug", slug).maybeSingle();
       if (!rest) { setNotFound(true); setLoading(false); return; }
       setRestaurant(rest);
+      if (rest.is_blocked) { setLoading(false); return; }
 
       const [catRes, prodRes] = await Promise.all([
         supabase.from("categories").select("*").eq("restaurant_id", rest.id).order("sort_order"),
