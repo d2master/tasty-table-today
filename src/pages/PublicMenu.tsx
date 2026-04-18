@@ -14,6 +14,7 @@ interface Restaurant {
   name: string;
   slug: string;
   description: string | null;
+  is_blocked?: boolean;
 }
 
 interface Category {
@@ -59,6 +60,7 @@ export default function PublicMenu() {
       const { data: rest } = await supabase.from("restaurants").select("*").eq("slug", slug).maybeSingle();
       if (!rest) { setNotFound(true); setLoading(false); return; }
       setRestaurant(rest);
+      if (rest.is_blocked) { setLoading(false); return; }
 
       const [catRes, prodRes] = await Promise.all([
         supabase.from("categories").select("*").eq("restaurant_id", rest.id).order("sort_order"),
@@ -156,6 +158,14 @@ export default function PublicMenu() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando cardápio...</div>;
   if (notFound) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Lanchonete não encontrada</div>;
+  if (restaurant?.is_blocked) return (
+    <div className="min-h-screen flex items-center justify-center p-6 text-center">
+      <div className="max-w-md">
+        <h1 className="text-2xl font-bold mb-2">Cardápio temporariamente indisponível</h1>
+        <p className="text-muted-foreground">Este estabelecimento está temporariamente fora do ar. Tente novamente mais tarde.</p>
+      </div>
+    </div>
+  );
 
   const filteredProducts = activeCategory ? products.filter(p => p.category_id === activeCategory) : products;
 
