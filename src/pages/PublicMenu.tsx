@@ -206,29 +206,51 @@ export default function PublicMenu() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProducts.map(product => {
             const inCart = cart.find(c => c.product.id === product.id);
+            const isPromo = product.is_promo && product.promo_price != null;
+            const discountPct = isPromo
+              ? Math.round((1 - Number(product.promo_price) / Number(product.price)) * 100)
+              : 0;
             return (
               <motion.div
                 key={product.id}
-                className="rounded-xl border bg-card overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                className={`relative rounded-xl border bg-card overflow-hidden shadow-sm hover:shadow-md transition-all ${
+                  isPromo ? "ring-2 ring-primary/60 shadow-[0_8px_24px_-12px_hsl(var(--primary)/0.45)]" : ""
+                }`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
               >
                 {product.image_url && (
                   <div className="relative">
                     <img src={product.image_url} alt={product.name} className="w-full h-44 object-cover" />
-                    {product.is_promo && product.promo_price != null && (
-                      <Badge className="absolute top-2 left-2 bg-destructive text-destructive-foreground">PROMO</Badge>
+                    {isPromo && (
+                      <>
+                        <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-primary text-primary-foreground px-2.5 py-1 text-[11px] font-display font-bold tracking-wider uppercase shadow-md">
+                          <Tag className="h-3 w-3" /> PROMO
+                        </span>
+                        {discountPct > 0 && (
+                          <span className="absolute top-2 right-2 rounded-full bg-destructive text-destructive-foreground px-2 py-1 text-[11px] font-bold shadow-md">
+                            -{discountPct}%
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
                 <div className="p-4 space-y-2">
-                  <h3 className="font-semibold">{product.name}</h3>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold">{product.name}</h3>
+                    {isPromo && !product.image_url && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-[10px] font-display font-bold tracking-wider uppercase">
+                        <Tag className="h-3 w-3" /> PROMO
+                      </span>
+                    )}
+                  </div>
                   {product.description && <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>}
                   <div className="flex items-center justify-between pt-1">
-                    {product.is_promo && product.promo_price != null ? (
-                      <div className="flex flex-col">
+                    {isPromo ? (
+                      <div className="flex items-baseline gap-2">
                         <span className="text-xs text-muted-foreground line-through">R$ {Number(product.price).toFixed(2)}</span>
-                        <span className="font-display font-bold text-lg text-destructive">R$ {Number(product.promo_price).toFixed(2)}</span>
+                        <span className="font-display font-extrabold text-xl text-primary">R$ {Number(product.promo_price).toFixed(2)}</span>
                       </div>
                     ) : (
                       <span className="font-display font-bold text-lg text-primary">R$ {Number(product.price).toFixed(2)}</span>
