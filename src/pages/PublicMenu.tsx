@@ -28,10 +28,15 @@ interface Product {
   name: string;
   description: string | null;
   price: number;
+  promo_price: number | null;
+  is_promo: boolean;
   image_url: string | null;
   is_available: boolean;
   category_id: string;
 }
+
+const effectivePrice = (p: Product) =>
+  p.is_promo && p.promo_price != null ? Number(p.promo_price) : Number(p.price);
 
 interface CartItem {
   product: Product;
@@ -87,7 +92,7 @@ export default function PublicMenu() {
     setCart(prev => prev.map(c => c.product.id === productId ? { ...c, quantity: Math.max(0, c.quantity + delta) } : c).filter(c => c.quantity > 0));
   };
 
-  const cartTotal = cart.reduce((sum, c) => sum + c.quantity * Number(c.product.price), 0);
+  const cartTotal = cart.reduce((sum, c) => sum + c.quantity * effectivePrice(c.product), 0);
   const cartCount = cart.reduce((sum, c) => sum + c.quantity, 0);
 
   const handleSubmitOrder = async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -131,7 +136,7 @@ export default function PublicMenu() {
       product_id: c.product.id,
       product_name: c.product.name,
       quantity: c.quantity,
-      price: Number(c.product.price),
+      price: effectivePrice(c.product),
     }));
 
       const { error: itemsError } = await supabase.from("order_items").insert(items);
@@ -209,13 +214,25 @@ export default function PublicMenu() {
                 animate={{ opacity: 1, y: 0 }}
               >
                 {product.image_url && (
-                  <img src={product.image_url} alt={product.name} className="w-full h-44 object-cover" />
+                  <div className="relative">
+                    <img src={product.image_url} alt={product.name} className="w-full h-44 object-cover" />
+                    {product.is_promo && product.promo_price != null && (
+                      <Badge className="absolute top-2 left-2 bg-destructive text-destructive-foreground">PROMO</Badge>
+                    )}
+                  </div>
                 )}
                 <div className="p-4 space-y-2">
                   <h3 className="font-semibold">{product.name}</h3>
                   {product.description && <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>}
                   <div className="flex items-center justify-between pt-1">
-                    <span className="font-display font-bold text-lg text-primary">R$ {Number(product.price).toFixed(2)}</span>
+                    {product.is_promo && product.promo_price != null ? (
+                      <div className="flex flex-col">
+                        <span className="text-xs text-muted-foreground line-through">R$ {Number(product.price).toFixed(2)}</span>
+                        <span className="font-display font-bold text-lg text-destructive">R$ {Number(product.promo_price).toFixed(2)}</span>
+                      </div>
+                    ) : (
+                      <span className="font-display font-bold text-lg text-primary">R$ {Number(product.price).toFixed(2)}</span>
+                    )}
                     {inCart ? (
                       <div className="flex items-center gap-2">
                         <Button size="sm" variant="outline" onClick={() => updateQuantity(product.id, -1)}><Minus className="h-3 w-3" /></Button>
@@ -270,7 +287,7 @@ export default function PublicMenu() {
                 <div key={item.product.id} className="flex items-center justify-between py-2 border-b">
                   <div>
                     <p className="font-medium">{item.product.name}</p>
-                    <p className="text-sm text-muted-foreground">R$ {Number(item.product.price).toFixed(2)} un.</p>
+                    <p className="text-sm text-muted-foreground">R$ {effectivePrice(item.product).toFixed(2)} un.</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button size="sm" variant="outline" onClick={() => updateQuantity(item.product.id, -1)}><Minus className="h-3 w-3" /></Button>
