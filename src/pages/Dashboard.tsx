@@ -296,13 +296,47 @@ export default function Dashboard() {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const validTrashOrders = trashOrders.filter(o => o.deleted_at && new Date(o.deleted_at) >= thirtyDaysAgo);
 
-  const renderOrder = (order: typeof orders[0], isTrash = false) => (
+  const paymentLabels: Record<string, string> = {
+    pix: "Pix",
+    debito: "Débito",
+    credito: "Crédito",
+    dinheiro: "Dinheiro",
+  };
+
+  const renderOrder = (order: typeof orders[0], isTrash = false) => {
+    const isDelivery = order.order_type === "delivery";
+    const mapsHref = order.delivery_maps_url
+      || (order.delivery_lat && order.delivery_lng ? `https://www.google.com/maps?q=${order.delivery_lat},${order.delivery_lng}` : null)
+      || (order.delivery_address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.delivery_address)}` : null);
+
+    return (
     <div key={order.id} className="rounded-xl border bg-card p-4 space-y-3">
       <div className="flex items-start justify-between">
-        <div>
-          <p className="font-semibold">{order.customer_name || "Cliente"}</p>
-          <p className="text-sm font-medium text-primary">Mesa: {order.table_number || "—"}</p>
-          {order.customer_phone && <p className="text-sm text-muted-foreground">Obs: {order.customer_phone}</p>}
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-semibold">{order.customer_name || "Cliente"}</p>
+            <Badge variant={isDelivery ? "default" : "secondary"} className="text-[10px]">
+              {isDelivery ? "🛵 Delivery" : `Mesa ${order.table_number || "—"}`}
+            </Badge>
+          </div>
+          {!isDelivery && order.table_number && (
+            <p className="text-sm font-medium text-primary">Mesa: {order.table_number}</p>
+          )}
+          {isDelivery && order.payment_method && (
+            <p className="text-sm text-muted-foreground">Pagamento: <span className="font-medium text-foreground">{paymentLabels[order.payment_method] || order.payment_method}</span></p>
+          )}
+          {isDelivery && (order.delivery_address || mapsHref) && (
+            <div className="text-sm text-muted-foreground">
+              {order.delivery_address && <p className="whitespace-pre-line">📍 {order.delivery_address}</p>}
+              {mapsHref && (
+                <a href={mapsHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline text-xs mt-1">
+                  <ExternalLink className="h-3 w-3" /> Abrir no Maps
+                </a>
+              )}
+            </div>
+          )}
+          {!isDelivery && order.customer_phone && <p className="text-sm text-muted-foreground">Obs: {order.customer_phone}</p>}
+          {isDelivery && order.customer_phone && <p className="text-sm text-muted-foreground">Tel: {order.customer_phone}</p>}
           <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString("pt-BR")}</p>
           {isTrash && order.deleted_at && (
             <p className="text-xs text-destructive">Excluído em: {new Date(order.deleted_at).toLocaleString("pt-BR")}</p>
@@ -432,7 +466,9 @@ export default function Dashboard() {
         </div>
       )}
     </div>
-  );
+    );
+  };
+
 
   const tabs = [
     { id: "orders" as Tab, label: "Pedidos do dia", icon: ShoppingBag, count: todayOrders.filter(o => o.status === "pending").length },

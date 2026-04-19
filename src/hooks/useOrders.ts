@@ -2,6 +2,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
 
+export type OrderType = "table" | "delivery";
+export type PaymentMethod = "pix" | "debito" | "credito" | "dinheiro";
+
 export interface Order {
   id: string;
   restaurant_id: string;
@@ -13,6 +16,12 @@ export interface Order {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  order_type?: OrderType;
+  payment_method?: PaymentMethod | null;
+  delivery_address?: string | null;
+  delivery_lat?: number | null;
+  delivery_lng?: number | null;
+  delivery_maps_url?: string | null;
 }
 
 export interface OrderItem {

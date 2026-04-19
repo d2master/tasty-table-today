@@ -4,9 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ShoppingCart, Plus, Minus, X, Send, Tag } from "lucide-react";
+import { ShoppingCart, Plus, Minus, X, Send, Tag, Utensils, Bike, MapPin, Link2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { z } from "zod";
+
+type OrderMode = "table" | "delivery";
+type PaymentMethod = "pix" | "debito" | "credito" | "dinheiro";
+type AddressMode = "manual" | "maps";
+
+const phoneRegex = /^[\d\s()+\-]{8,20}$/;
 
 interface Restaurant {
   id: string;
@@ -52,11 +60,19 @@ export default function PublicMenu() {
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
+  const [orderMode, setOrderMode] = useState<OrderMode>("table");
   const [customerName, setCustomerName] = useState("");
   const [tableNumber, setTableNumber] = useState("");
   const [observation, setObservation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  // Delivery fields
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
+  const [addressMode, setAddressMode] = useState<AddressMode>("manual");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryMapsUrl, setDeliveryMapsUrl] = useState("");
 
   useEffect(() => {
     if (!slug) return;
@@ -94,34 +110,76 @@ export default function PublicMenu() {
   const cartTotal = cart.reduce((sum, c) => sum + c.quantity * effectivePrice(c.product), 0);
   const cartCount = cart.reduce((sum, c) => sum + c.quantity, 0);
 
+  const tableSchema = z.object({
+    tableNumber: z.string().trim().min(1, "Informe o número da mesa").max(20),
+    customerName: z.string().trim().max(100).optional(),
+  });
+
+  const deliverySchema = z.object({
+    customerName: z.string().trim().min(1, "Informe seu nome").max(100, "Nome muito longo"),
+    customerPhone: z.string().trim().regex(phoneRegex, "Telefone inválido"),
+    paymentMethod: z.enum(["pix", "debito", "credito", "dinheiro"], { errorMap: () => ({ message: "Selecione a forma de pagamento" }) }),
+    address: z.string().trim().min(5, "Informe o endereço de entrega").max(500),
+  });
+
   const handleSubmitOrder = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!tableNumber.trim()) {
-      toast.error("Informe o número da mesa");
-      return;
-    }
     if (cart.length === 0) {
       toast.error("Carrinho vazio");
       return;
     }
-    setSubmitting(true);
 
+    let orderPayload: any = {
+      restaurant_id: restaurant!.id,
+      status: "pending",
+      total: cartTotal,
+      order_type: orderMode,
+    };
+
+    if (orderMode === "table") {
+      const parsed = tableSchema.safeParse({ tableNumber, customerName });
+      if (!parsed.success) {
+        toast.error(parsed.error.issues[0].message);
+        return;
+      }
+      orderPayload = {
+        ...orderPayload,
+        customer_name: customerName.trim() || "Cliente",
+        table_number: tableNumber.trim(),
+        customer_phone: observation.trim() || null,
+      };
+    } else {
+      const addressValue = addressMode === "manual" ? deliveryAddress : deliveryMapsUrl;
+      const parsed = deliverySchema.safeParse({
+        customerName,
+        customerPhone,
+        paymentMethod,
+        address: addressValue,
+      });
+      if (!parsed.success) {
+        toast.error(parsed.error.issues[0].message);
+        return;
+      }
+      orderPayload = {
+        ...orderPayload,
+        customer_name: customerName.trim(),
+        customer_phone: customerPhone.trim(),
+        table_number: "",
+        payment_method: paymentMethod,
+        delivery_address: addressMode === "manual" ? deliveryAddress.trim() : (observation.trim() ? `Obs: ${observation.trim()}` : null),
+        delivery_maps_url: addressMode === "maps" ? deliveryMapsUrl.trim() : null,
+      };
+      if (addressMode === "manual" && observation.trim()) {
+        orderPayload.delivery_address = `${deliveryAddress.trim()}\nObs: ${observation.trim()}`;
+      }
+    }
+
+    setSubmitting(true);
     try {
       const orderId = crypto.randomUUID();
-
-      const { error: orderError } = await supabase
-        .from("orders")
-        .insert({
-          id: orderId,
-          restaurant_id: restaurant!.id,
-          customer_name: customerName.trim() || "Cliente",
-          table_number: tableNumber.trim(),
-          customer_phone: observation.trim() || null,
-          status: "pending",
-          total: cartTotal,
-        });
+      const { error: orderError } = await supabase.from("orders").insert({ id: orderId, ...orderPayload });
 
       if (orderError) {
         console.error("Order insert error:", orderError);
@@ -130,13 +188,13 @@ export default function PublicMenu() {
         return;
       }
 
-    const items = cart.map(c => ({
+      const items = cart.map(c => ({
         order_id: orderId,
-      product_id: c.product.id,
-      product_name: c.product.name,
-      quantity: c.quantity,
-      price: effectivePrice(c.product),
-    }));
+        product_id: c.product.id,
+        product_name: c.product.name,
+        quantity: c.quantity,
+        price: effectivePrice(c.product),
+      }));
 
       const { error: itemsError } = await supabase.from("order_items").insert(items);
       if (itemsError) {
@@ -152,6 +210,10 @@ export default function PublicMenu() {
       setCustomerName("");
       setTableNumber("");
       setObservation("");
+      setCustomerPhone("");
+      setPaymentMethod("");
+      setDeliveryAddress("");
+      setDeliveryMapsUrl("");
     } catch (err: any) {
       console.error("Unexpected order error:", err);
       toast.error("Erro inesperado ao enviar pedido");
@@ -323,20 +385,129 @@ export default function PublicMenu() {
                 <span className="text-primary">R$ {cartTotal.toFixed(2)}</span>
               </div>
 
-              <div className="space-y-3 pt-2">
-                <div className="space-y-1">
-                  <Label>Seu nome</Label>
-                  <Input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="João da Silva (opcional)" />
-                </div>
-                <div className="space-y-1">
-                  <Label>Número da mesa <span className="text-destructive">*</span></Label>
-                  <Input value={tableNumber} onChange={e => setTableNumber(e.target.value)} placeholder="Ex: 5" />
-                </div>
-                <div className="space-y-1">
-                  <Label>Observação</Label>
-                  <Input value={observation} onChange={e => setObservation(e.target.value)} placeholder="Sem cebola, bem passado... (opcional)" />
-                </div>
+              {/* Order mode selector */}
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setOrderMode("table")}
+                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                    orderMode === "table" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
+                  }`}
+                >
+                  <Utensils className="h-4 w-4" /> Mesa
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrderMode("delivery")}
+                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                    orderMode === "delivery" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
+                  }`}
+                >
+                  <Bike className="h-4 w-4" /> Delivery
+                </button>
               </div>
+
+              <div className="space-y-3">
+                {orderMode === "table" ? (
+                  <>
+                    <div className="space-y-1">
+                      <Label>Seu nome</Label>
+                      <Input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="João da Silva (opcional)" maxLength={100} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Número da mesa <span className="text-destructive">*</span></Label>
+                      <Input value={tableNumber} onChange={e => setTableNumber(e.target.value)} placeholder="Ex: 5" maxLength={20} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Observação</Label>
+                      <Input value={observation} onChange={e => setObservation(e.target.value)} placeholder="Sem cebola, bem passado... (opcional)" maxLength={200} />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-1">
+                      <Label>Seu nome <span className="text-destructive">*</span></Label>
+                      <Input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="João da Silva" maxLength={100} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Telefone <span className="text-destructive">*</span></Label>
+                      <Input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="(11) 99999-9999" maxLength={20} />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label>Forma de pagamento <span className="text-destructive">*</span></Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {([
+                          { v: "pix", l: "Pix" },
+                          { v: "debito", l: "Débito" },
+                          { v: "credito", l: "Crédito" },
+                          { v: "dinheiro", l: "Dinheiro" },
+                        ] as { v: PaymentMethod; l: string }[]).map(opt => (
+                          <button
+                            key={opt.v}
+                            type="button"
+                            onClick={() => setPaymentMethod(opt.v)}
+                            className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
+                              paymentMethod === opt.v ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
+                            }`}
+                          >
+                            {opt.l}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label>Endereço de entrega <span className="text-destructive">*</span></Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setAddressMode("manual")}
+                          className={`flex items-center justify-center gap-2 py-2 rounded-lg border text-xs font-medium transition-colors ${
+                            addressMode === "manual" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
+                          }`}
+                        >
+                          <MapPin className="h-3.5 w-3.5" /> Digitar endereço
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAddressMode("maps")}
+                          className={`flex items-center justify-center gap-2 py-2 rounded-lg border text-xs font-medium transition-colors ${
+                            addressMode === "maps" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
+                          }`}
+                        >
+                          <Link2 className="h-3.5 w-3.5" /> Link do Maps
+                        </button>
+                      </div>
+                      {addressMode === "manual" ? (
+                        <Textarea
+                          value={deliveryAddress}
+                          onChange={e => setDeliveryAddress(e.target.value)}
+                          placeholder="Rua, número, bairro, complemento, ponto de referência..."
+                          maxLength={500}
+                          rows={3}
+                        />
+                      ) : (
+                        <Input
+                          value={deliveryMapsUrl}
+                          onChange={e => setDeliveryMapsUrl(e.target.value)}
+                          placeholder="https://maps.google.com/..."
+                          maxLength={500}
+                        />
+                      )}
+                      {addressMode === "maps" && (
+                        <p className="text-xs text-muted-foreground">Abra o Google Maps, marque o local e cole o link aqui.</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label>Observação</Label>
+                      <Input value={observation} onChange={e => setObservation(e.target.value)} placeholder="Sem cebola, troco para R$50... (opcional)" maxLength={200} />
+                    </div>
+                  </>
+                )}
+              </div>
+
 
               <Button className="w-full gap-2" size="lg" onClick={handleSubmitOrder} disabled={submitting}>
                 <Send className="h-4 w-4" />
