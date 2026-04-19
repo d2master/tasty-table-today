@@ -385,20 +385,129 @@ export default function PublicMenu() {
                 <span className="text-primary">R$ {cartTotal.toFixed(2)}</span>
               </div>
 
-              <div className="space-y-3 pt-2">
-                <div className="space-y-1">
-                  <Label>Seu nome</Label>
-                  <Input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="João da Silva (opcional)" />
-                </div>
-                <div className="space-y-1">
-                  <Label>Número da mesa <span className="text-destructive">*</span></Label>
-                  <Input value={tableNumber} onChange={e => setTableNumber(e.target.value)} placeholder="Ex: 5" />
-                </div>
-                <div className="space-y-1">
-                  <Label>Observação</Label>
-                  <Input value={observation} onChange={e => setObservation(e.target.value)} placeholder="Sem cebola, bem passado... (opcional)" />
-                </div>
+              {/* Order mode selector */}
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setOrderMode("table")}
+                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                    orderMode === "table" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
+                  }`}
+                >
+                  <Utensils className="h-4 w-4" /> Mesa
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrderMode("delivery")}
+                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                    orderMode === "delivery" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
+                  }`}
+                >
+                  <Bike className="h-4 w-4" /> Delivery
+                </button>
               </div>
+
+              <div className="space-y-3">
+                {orderMode === "table" ? (
+                  <>
+                    <div className="space-y-1">
+                      <Label>Seu nome</Label>
+                      <Input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="João da Silva (opcional)" maxLength={100} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Número da mesa <span className="text-destructive">*</span></Label>
+                      <Input value={tableNumber} onChange={e => setTableNumber(e.target.value)} placeholder="Ex: 5" maxLength={20} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Observação</Label>
+                      <Input value={observation} onChange={e => setObservation(e.target.value)} placeholder="Sem cebola, bem passado... (opcional)" maxLength={200} />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-1">
+                      <Label>Seu nome <span className="text-destructive">*</span></Label>
+                      <Input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="João da Silva" maxLength={100} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Telefone <span className="text-destructive">*</span></Label>
+                      <Input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="(11) 99999-9999" maxLength={20} />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label>Forma de pagamento <span className="text-destructive">*</span></Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {([
+                          { v: "pix", l: "Pix" },
+                          { v: "debito", l: "Débito" },
+                          { v: "credito", l: "Crédito" },
+                          { v: "dinheiro", l: "Dinheiro" },
+                        ] as { v: PaymentMethod; l: string }[]).map(opt => (
+                          <button
+                            key={opt.v}
+                            type="button"
+                            onClick={() => setPaymentMethod(opt.v)}
+                            className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
+                              paymentMethod === opt.v ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
+                            }`}
+                          >
+                            {opt.l}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label>Endereço de entrega <span className="text-destructive">*</span></Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setAddressMode("manual")}
+                          className={`flex items-center justify-center gap-2 py-2 rounded-lg border text-xs font-medium transition-colors ${
+                            addressMode === "manual" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
+                          }`}
+                        >
+                          <MapPin className="h-3.5 w-3.5" /> Digitar endereço
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAddressMode("maps")}
+                          className={`flex items-center justify-center gap-2 py-2 rounded-lg border text-xs font-medium transition-colors ${
+                            addressMode === "maps" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
+                          }`}
+                        >
+                          <Link2 className="h-3.5 w-3.5" /> Link do Maps
+                        </button>
+                      </div>
+                      {addressMode === "manual" ? (
+                        <Textarea
+                          value={deliveryAddress}
+                          onChange={e => setDeliveryAddress(e.target.value)}
+                          placeholder="Rua, número, bairro, complemento, ponto de referência..."
+                          maxLength={500}
+                          rows={3}
+                        />
+                      ) : (
+                        <Input
+                          value={deliveryMapsUrl}
+                          onChange={e => setDeliveryMapsUrl(e.target.value)}
+                          placeholder="https://maps.google.com/..."
+                          maxLength={500}
+                        />
+                      )}
+                      {addressMode === "maps" && (
+                        <p className="text-xs text-muted-foreground">Abra o Google Maps, marque o local e cole o link aqui.</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label>Observação</Label>
+                      <Input value={observation} onChange={e => setObservation(e.target.value)} placeholder="Sem cebola, troco para R$50... (opcional)" maxLength={200} />
+                    </div>
+                  </>
+                )}
+              </div>
+
 
               <Button className="w-full gap-2" size="lg" onClick={handleSubmitOrder} disabled={submitting}>
                 <Send className="h-4 w-4" />
