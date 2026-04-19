@@ -4,9 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ShoppingCart, Plus, Minus, X, Send } from "lucide-react";
+import { ShoppingCart, Plus, Minus, X, Send, Tag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Restaurant {
