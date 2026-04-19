@@ -110,34 +110,76 @@ export default function PublicMenu() {
   const cartTotal = cart.reduce((sum, c) => sum + c.quantity * effectivePrice(c.product), 0);
   const cartCount = cart.reduce((sum, c) => sum + c.quantity, 0);
 
+  const tableSchema = z.object({
+    tableNumber: z.string().trim().min(1, "Informe o número da mesa").max(20),
+    customerName: z.string().trim().max(100).optional(),
+  });
+
+  const deliverySchema = z.object({
+    customerName: z.string().trim().min(1, "Informe seu nome").max(100, "Nome muito longo"),
+    customerPhone: z.string().trim().regex(phoneRegex, "Telefone inválido"),
+    paymentMethod: z.enum(["pix", "debito", "credito", "dinheiro"], { errorMap: () => ({ message: "Selecione a forma de pagamento" }) }),
+    address: z.string().trim().min(5, "Informe o endereço de entrega").max(500),
+  });
+
   const handleSubmitOrder = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!tableNumber.trim()) {
-      toast.error("Informe o número da mesa");
-      return;
-    }
     if (cart.length === 0) {
       toast.error("Carrinho vazio");
       return;
     }
-    setSubmitting(true);
 
+    let orderPayload: any = {
+      restaurant_id: restaurant!.id,
+      status: "pending",
+      total: cartTotal,
+      order_type: orderMode,
+    };
+
+    if (orderMode === "table") {
+      const parsed = tableSchema.safeParse({ tableNumber, customerName });
+      if (!parsed.success) {
+        toast.error(parsed.error.issues[0].message);
+        return;
+      }
+      orderPayload = {
+        ...orderPayload,
+        customer_name: customerName.trim() || "Cliente",
+        table_number: tableNumber.trim(),
+        customer_phone: observation.trim() || null,
+      };
+    } else {
+      const addressValue = addressMode === "manual" ? deliveryAddress : deliveryMapsUrl;
+      const parsed = deliverySchema.safeParse({
+        customerName,
+        customerPhone,
+        paymentMethod,
+        address: addressValue,
+      });
+      if (!parsed.success) {
+        toast.error(parsed.error.issues[0].message);
+        return;
+      }
+      orderPayload = {
+        ...orderPayload,
+        customer_name: customerName.trim(),
+        customer_phone: customerPhone.trim(),
+        table_number: "",
+        payment_method: paymentMethod,
+        delivery_address: addressMode === "manual" ? deliveryAddress.trim() : (observation.trim() ? `Obs: ${observation.trim()}` : null),
+        delivery_maps_url: addressMode === "maps" ? deliveryMapsUrl.trim() : null,
+      };
+      if (addressMode === "manual" && observation.trim()) {
+        orderPayload.delivery_address = `${deliveryAddress.trim()}\nObs: ${observation.trim()}`;
+      }
+    }
+
+    setSubmitting(true);
     try {
       const orderId = crypto.randomUUID();
-
-      const { error: orderError } = await supabase
-        .from("orders")
-        .insert({
-          id: orderId,
-          restaurant_id: restaurant!.id,
-          customer_name: customerName.trim() || "Cliente",
-          table_number: tableNumber.trim(),
-          customer_phone: observation.trim() || null,
-          status: "pending",
-          total: cartTotal,
-        });
+      const { error: orderError } = await supabase.from("orders").insert({ id: orderId, ...orderPayload });
 
       if (orderError) {
         console.error("Order insert error:", orderError);
@@ -146,13 +188,13 @@ export default function PublicMenu() {
         return;
       }
 
-    const items = cart.map(c => ({
+      const items = cart.map(c => ({
         order_id: orderId,
-      product_id: c.product.id,
-      product_name: c.product.name,
-      quantity: c.quantity,
-      price: effectivePrice(c.product),
-    }));
+        product_id: c.product.id,
+        product_name: c.product.name,
+        quantity: c.quantity,
+        price: effectivePrice(c.product),
+      }));
 
       const { error: itemsError } = await supabase.from("order_items").insert(items);
       if (itemsError) {
@@ -168,6 +210,10 @@ export default function PublicMenu() {
       setCustomerName("");
       setTableNumber("");
       setObservation("");
+      setCustomerPhone("");
+      setPaymentMethod("");
+      setDeliveryAddress("");
+      setDeliveryMapsUrl("");
     } catch (err: any) {
       console.error("Unexpected order error:", err);
       toast.error("Erro inesperado ao enviar pedido");
