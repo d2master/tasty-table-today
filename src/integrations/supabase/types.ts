@@ -136,7 +136,13 @@ export type Database = {
           customer_name: string | null
           customer_phone: string | null
           deleted_at: string | null
+          delivery_address: string | null
+          delivery_lat: number | null
+          delivery_lng: number | null
+          delivery_maps_url: string | null
           id: string
+          order_type: string
+          payment_method: string | null
           restaurant_id: string
           status: string
           table_number: string
@@ -148,7 +154,13 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string | null
           deleted_at?: string | null
+          delivery_address?: string | null
+          delivery_lat?: number | null
+          delivery_lng?: number | null
+          delivery_maps_url?: string | null
           id?: string
+          order_type?: string
+          payment_method?: string | null
           restaurant_id: string
           status?: string
           table_number?: string
@@ -160,7 +172,13 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string | null
           deleted_at?: string | null
+          delivery_address?: string | null
+          delivery_lat?: number | null
+          delivery_lng?: number | null
+          delivery_maps_url?: string | null
           id?: string
+          order_type?: string
+          payment_method?: string | null
           restaurant_id?: string
           status?: string
           table_number?: string
