@@ -60,11 +60,19 @@ export default function PublicMenu() {
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
+  const [orderMode, setOrderMode] = useState<OrderMode>("table");
   const [customerName, setCustomerName] = useState("");
   const [tableNumber, setTableNumber] = useState("");
   const [observation, setObservation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  // Delivery fields
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
+  const [addressMode, setAddressMode] = useState<AddressMode>("manual");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryMapsUrl, setDeliveryMapsUrl] = useState("");
 
   useEffect(() => {
     if (!slug) return;
