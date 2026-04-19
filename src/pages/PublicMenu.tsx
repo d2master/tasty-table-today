@@ -4,9 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ShoppingCart, Plus, Minus, X, Send, Tag } from "lucide-react";
+import { ShoppingCart, Plus, Minus, X, Send, Tag, Utensils, Bike, MapPin, Link2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { z } from "zod";
+
+type OrderMode = "table" | "delivery";
+type PaymentMethod = "pix" | "debito" | "credito" | "dinheiro";
+type AddressMode = "manual" | "maps";
+
+const phoneRegex = /^[\d\s()+\-]{8,20}$/;
 
 interface Restaurant {
   id: string;
