@@ -645,6 +645,23 @@ export default function Dashboard() {
                     <Switch checked={productForm.is_available} onCheckedChange={v => setProductForm(p => ({ ...p, is_available: v }))} />
                     <Label>Disponível</Label>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={productForm.is_promo} onCheckedChange={v => setProductForm(p => ({ ...p, is_promo: v }))} />
+                    <Label>Em promoção</Label>
+                  </div>
+                  {productForm.is_promo && (
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Preço promocional (R$)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={productForm.promo_price}
+                        onChange={e => setProductForm(p => ({ ...p, promo_price: e.target.value }))}
+                        placeholder="14.90"
+                      />
+                      <p className="text-xs text-muted-foreground">Deve ser menor que o preço original. O preço antigo aparecerá riscado no cardápio.</p>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={handleSaveProduct} disabled={savingProduct}>{savingProduct ? "Salvando..." : "Salvar"}</Button>
@@ -663,7 +680,14 @@ export default function Dashboard() {
                         <h4 className="font-semibold">{p.name}</h4>
                         <p className="text-sm text-muted-foreground line-clamp-2">{p.description}</p>
                       </div>
-                      <span className="font-display font-bold text-primary whitespace-nowrap">R$ {Number(p.price).toFixed(2)}</span>
+                      {p.is_promo && p.promo_price != null ? (
+                        <div className="flex flex-col items-end whitespace-nowrap">
+                          <span className="text-xs text-muted-foreground line-through">R$ {Number(p.price).toFixed(2)}</span>
+                          <span className="font-display font-bold text-primary">R$ {Number(p.promo_price).toFixed(2)}</span>
+                        </div>
+                      ) : (
+                        <span className="font-display font-bold text-primary whitespace-nowrap">R$ {Number(p.price).toFixed(2)}</span>
+                      )}
                     </div>
                     <div className="flex items-center justify-between">
                       <Badge variant={p.is_available ? "default" : "secondary"}>{p.is_available ? "Disponível" : "Indisponível"}</Badge>
