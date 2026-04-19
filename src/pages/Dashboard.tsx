@@ -466,7 +466,9 @@ export default function Dashboard() {
         </div>
       )}
     </div>
-  );
+    );
+  };
+
 
   const tabs = [
     { id: "orders" as Tab, label: "Pedidos do dia", icon: ShoppingBag, count: todayOrders.filter(o => o.status === "pending").length },
