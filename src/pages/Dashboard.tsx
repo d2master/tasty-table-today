@@ -46,7 +46,7 @@ export default function Dashboard() {
   // Product form
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
-  const [productForm, setProductForm] = useState({ name: "", description: "", price: "", category_id: "", is_available: true });
+  const [productForm, setProductForm] = useState({ name: "", description: "", price: "", promo_price: "", is_promo: false, category_id: "", is_available: true });
   const [productImage, setProductImage] = useState<File | null>(null);
   const [savingProduct, setSavingProduct] = useState(false);
 
@@ -151,7 +151,7 @@ export default function Dashboard() {
   };
 
   const resetProductForm = () => {
-    setProductForm({ name: "", description: "", price: "", category_id: "", is_available: true });
+    setProductForm({ name: "", description: "", price: "", promo_price: "", is_promo: false, category_id: "", is_available: true });
     setProductImage(null);
     setEditingProduct(null);
     setShowProductForm(false);
@@ -161,6 +161,11 @@ export default function Dashboard() {
     if (!productForm.name.trim() || !productForm.category_id || !productForm.price) {
       toast.error("Preencha nome, categoria e preço");
       return;
+    }
+    const promoVal = productForm.is_promo && productForm.promo_price ? parseFloat(productForm.promo_price) : null;
+    if (productForm.is_promo) {
+      if (!promoVal || promoVal <= 0) { toast.error("Informe um preço promocional válido"); return; }
+      if (promoVal >= parseFloat(productForm.price)) { toast.error("O preço promocional deve ser menor que o preço original"); return; }
     }
     setSavingProduct(true);
     try {
@@ -175,6 +180,8 @@ export default function Dashboard() {
           name: productForm.name,
           description: productForm.description || null,
           price: parseFloat(productForm.price),
+          promo_price: promoVal,
+          is_promo: productForm.is_promo,
           category_id: productForm.category_id,
           is_available: productForm.is_available,
           ...(image_url ? { image_url } : {}),
@@ -185,6 +192,8 @@ export default function Dashboard() {
           name: productForm.name,
           description: productForm.description || null,
           price: parseFloat(productForm.price),
+          promo_price: promoVal,
+          is_promo: productForm.is_promo,
           category_id: productForm.category_id,
           is_available: productForm.is_available,
           image_url,
@@ -206,6 +215,8 @@ export default function Dashboard() {
       name: p.name,
       description: p.description || "",
       price: String(p.price),
+      promo_price: p.promo_price != null ? String(p.promo_price) : "",
+      is_promo: !!p.is_promo,
       category_id: p.category_id,
       is_available: p.is_available,
     });
