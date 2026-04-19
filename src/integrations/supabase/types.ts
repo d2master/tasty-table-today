@@ -185,8 +185,10 @@ export type Database = {
           id: string
           image_url: string | null
           is_available: boolean
+          is_promo: boolean
           name: string
           price: number
+          promo_price: number | null
           restaurant_id: string
           sort_order: number
           updated_at: string
@@ -198,8 +200,10 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_available?: boolean
+          is_promo?: boolean
           name: string
           price?: number
+          promo_price?: number | null
           restaurant_id: string
           sort_order?: number
           updated_at?: string
@@ -211,8 +215,10 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_available?: boolean
+          is_promo?: boolean
           name?: string
           price?: number
+          promo_price?: number | null
           restaurant_id?: string
           sort_order?: number
           updated_at?: string

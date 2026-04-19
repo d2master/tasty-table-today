@@ -8,6 +8,8 @@ export interface Product {
   name: string;
   description: string | null;
   price: number;
+  promo_price: number | null;
+  is_promo: boolean;
   image_url: string | null;
   is_available: boolean;
   sort_order: number;
