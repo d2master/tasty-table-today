@@ -2,6 +2,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
+export type PixKeyType = "cpf" | "cnpj" | "email" | "phone" | "random";
+
+export interface RestaurantPixSettings {
+  pix_enabled: boolean;
+  pix_key: string | null;
+  pix_key_type: PixKeyType | null;
+  pix_recipient_name: string | null;
+  pix_city: string | null;
+}
+
 export function useRestaurant() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -45,5 +55,16 @@ export function useRestaurant() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["restaurant"] }),
   });
 
-  return { restaurant: restaurantQuery.data, isLoading: restaurantQuery.isLoading, createRestaurant, updateTrashPassword };
+  const updatePixSettings = useMutation({
+    mutationFn: async (settings: RestaurantPixSettings) => {
+      const { error } = await supabase
+        .from("restaurants")
+        .update(settings as never)
+        .eq("id", restaurantQuery.data!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["restaurant"] }),
+  });
+
+  return { restaurant: restaurantQuery.data, isLoading: restaurantQuery.isLoading, createRestaurant, updateTrashPassword, updatePixSettings };
 }
