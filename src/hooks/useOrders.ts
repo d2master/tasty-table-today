@@ -22,6 +22,9 @@ export interface Order {
   delivery_lat?: number | null;
   delivery_lng?: number | null;
   delivery_maps_url?: string | null;
+  payment_status?: "pending" | "awaiting_pix" | "paid" | "failed";
+  pix_copy_paste?: string | null;
+  pix_paid_at?: string | null;
 }
 
 export interface OrderItem {
@@ -121,6 +124,20 @@ export function useOrders(restaurantId: string | undefined) {
     },
   });
 
+  const markOrderAsPaid = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("orders")
+        .update({ payment_status: "paid", pix_paid_at: new Date().toISOString() } as never)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ["orders-trash", restaurantId] });
+    },
+  });
+
   const getOrderItems = async (orderId: string) => {
     const { data, error } = await supabase
       .from("order_items")
@@ -138,6 +155,7 @@ export function useOrders(restaurantId: string | undefined) {
     softDeleteOrder,
     restoreOrder,
     permanentDeleteOrder,
+    markOrderAsPaid,
     getOrderItems,
   };
 }

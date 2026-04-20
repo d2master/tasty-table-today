@@ -143,6 +143,9 @@ export type Database = {
           id: string
           order_type: string
           payment_method: string | null
+          payment_status: string
+          pix_copy_paste: string | null
+          pix_paid_at: string | null
           restaurant_id: string
           status: string
           table_number: string
@@ -161,6 +164,9 @@ export type Database = {
           id?: string
           order_type?: string
           payment_method?: string | null
+          payment_status?: string
+          pix_copy_paste?: string | null
+          pix_paid_at?: string | null
           restaurant_id: string
           status?: string
           table_number?: string
@@ -179,6 +185,9 @@ export type Database = {
           id?: string
           order_type?: string
           payment_method?: string | null
+          payment_status?: string
+          pix_copy_paste?: string | null
+          pix_paid_at?: string | null
           restaurant_id?: string
           status?: string
           table_number?: string
@@ -267,6 +276,11 @@ export type Database = {
           logo_url: string | null
           name: string
           owner_id: string
+          pix_city: string | null
+          pix_enabled: boolean
+          pix_key: string | null
+          pix_key_type: string | null
+          pix_recipient_name: string | null
           slug: string
           trash_password: string | null
           updated_at: string
@@ -279,6 +293,11 @@ export type Database = {
           logo_url?: string | null
           name: string
           owner_id: string
+          pix_city?: string | null
+          pix_enabled?: boolean
+          pix_key?: string | null
+          pix_key_type?: string | null
+          pix_recipient_name?: string | null
           slug: string
           trash_password?: string | null
           updated_at?: string
@@ -291,6 +310,11 @@ export type Database = {
           logo_url?: string | null
           name?: string
           owner_id?: string
+          pix_city?: string | null
+          pix_enabled?: boolean
+          pix_key?: string | null
+          pix_key_type?: string | null
+          pix_recipient_name?: string | null
           slug?: string
           trash_password?: string | null
           updated_at?: string

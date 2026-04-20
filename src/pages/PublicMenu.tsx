@@ -6,15 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ShoppingCart, Plus, Minus, X, Send, Tag, Utensils, Bike, MapPin, Link2 } from "lucide-react";
+import { ShoppingCart, Plus, Minus, X, Send, Tag, Utensils, Bike, MapPin, Link2, Copy, QrCode } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { z } from "zod";
+import { QRCodeSVG } from "qrcode.react";
+import { generatePixPayload } from "@/lib/pix";
 
 type OrderMode = "table" | "delivery";
 type PaymentMethod = "pix" | "debito" | "credito" | "dinheiro";
 type AddressMode = "manual" | "maps";
 
-const phoneRegex = /^[\d\s()+\-]{8,20}$/;
+const phoneRegex = /^[\d\s()+-]{8,20}$/;
 
 interface Restaurant {
   id: string;
@@ -22,6 +24,11 @@ interface Restaurant {
   slug: string;
   description: string | null;
   is_blocked?: boolean;
+  pix_enabled?: boolean;
+  pix_key?: string | null;
+  pix_key_type?: "cpf" | "cnpj" | "email" | "phone" | "random" | null;
+  pix_recipient_name?: string | null;
+  pix_city?: string | null;
 }
 
 interface Category {
@@ -73,13 +80,37 @@ export default function PublicMenu() {
   const [addressMode, setAddressMode] = useState<AddressMode>("manual");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [deliveryMapsUrl, setDeliveryMapsUrl] = useState("");
+  const [pixPayment, setPixPayment] = useState<{ copyPaste: string; key: string; amount: number; orderId: string } | null>(null);
+
+  const resetCheckoutState = () => {
+    setCart([]);
+    setShowCart(false);
+    setCustomerName("");
+    setTableNumber("");
+    setObservation("");
+    setCustomerPhone("");
+    setPaymentMethod("");
+    setDeliveryAddress("");
+    setDeliveryMapsUrl("");
+  };
 
   useEffect(() => {
     if (!slug) return;
     (async () => {
       const { data: rest } = await supabase.from("restaurants").select("*").eq("slug", slug).maybeSingle();
       if (!rest) { setNotFound(true); setLoading(false); return; }
-      setRestaurant(rest);
+      setRestaurant({
+        id: rest.id,
+        name: rest.name,
+        slug: rest.slug,
+        description: rest.description,
+        is_blocked: rest.is_blocked,
+        pix_enabled: rest.pix_enabled,
+        pix_key: rest.pix_key,
+        pix_key_type: (rest.pix_key_type as Restaurant["pix_key_type"]) ?? null,
+        pix_recipient_name: rest.pix_recipient_name,
+        pix_city: rest.pix_city,
+      });
       if (rest.is_blocked) { setLoading(false); return; }
 
       const [catRes, prodRes] = await Promise.all([
@@ -162,6 +193,17 @@ export default function PublicMenu() {
         toast.error(parsed.error.issues[0].message);
         return;
       }
+      const needsPix = paymentMethod === "pix";
+
+      if (needsPix) {
+        const missingPixConfig = !restaurant?.pix_enabled || !restaurant.pix_key || !restaurant.pix_key_type || !restaurant.pix_recipient_name || !restaurant.pix_city;
+
+        if (missingPixConfig) {
+          toast.error("A lanchonete ainda não configurou o Pix.");
+          return;
+        }
+      }
+
       orderPayload = {
         ...orderPayload,
         customer_name: customerName.trim(),
@@ -179,7 +221,24 @@ export default function PublicMenu() {
     setSubmitting(true);
     try {
       const orderId = crypto.randomUUID();
-      const { error: orderError } = await supabase.from("orders").insert({ id: orderId, ...orderPayload });
+      const pixCopyPaste = paymentMethod === "pix"
+        ? generatePixPayload({
+            key: restaurant!.pix_key!,
+            keyType: restaurant!.pix_key_type!,
+            recipientName: restaurant!.pix_recipient_name!,
+            city: restaurant!.pix_city!,
+            amount: cartTotal,
+            txid: orderId.replace(/-/g, "").slice(0, 25),
+            description: `${restaurant!.name} ${orderMode === "delivery" ? "DELIVERY" : "MESA"}`,
+          })
+        : null;
+
+      const { error: orderError } = await supabase.from("orders").insert({
+        id: orderId,
+        ...orderPayload,
+        payment_status: paymentMethod === "pix" ? "awaiting_pix" : "pending",
+        pix_copy_paste: pixCopyPaste,
+      } as never);
 
       if (orderError) {
         console.error("Order insert error:", orderError);
@@ -204,16 +263,15 @@ export default function PublicMenu() {
         return;
       }
 
+      if (paymentMethod === "pix" && pixCopyPaste && restaurant?.pix_key) {
+        setPixPayment({ copyPaste: pixCopyPaste, key: restaurant.pix_key, amount: cartTotal, orderId });
+        resetCheckoutState();
+        toast.success("Pedido enviado! Agora finalize o pagamento via Pix.");
+        return;
+      }
+
       toast.success("Pedido enviado com sucesso! 🎉");
-      setCart([]);
-      setShowCart(false);
-      setCustomerName("");
-      setTableNumber("");
-      setObservation("");
-      setCustomerPhone("");
-      setPaymentMethod("");
-      setDeliveryAddress("");
-      setDeliveryMapsUrl("");
+      resetCheckoutState();
     } catch (err: any) {
       console.error("Unexpected order error:", err);
       toast.error("Erro inesperado ao enviar pedido");
@@ -346,14 +404,14 @@ export default function PublicMenu() {
 
       {/* Cart Drawer */}
       <AnimatePresence>
-        {showCart && (
+        {(showCart || pixPayment) && (
           <motion.div
             className="fixed inset-0 z-50 flex items-end justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className="absolute inset-0 bg-foreground/40" onClick={() => !submitting && setShowCart(false)} />
+            <div className="absolute inset-0 bg-foreground/40" onClick={() => !submitting && !pixPayment && setShowCart(false)} />
             <motion.div
               className="relative w-full max-w-lg bg-card rounded-t-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto"
               initial={{ y: "100%" }}
@@ -362,10 +420,49 @@ export default function PublicMenu() {
               transition={{ type: "spring", damping: 25 }}
             >
               <div className="flex items-center justify-between">
-                <h2 className="font-display text-xl font-bold">Seu Pedido</h2>
-                <Button variant="ghost" size="sm" onClick={() => setShowCart(false)}><X className="h-5 w-5" /></Button>
+                <h2 className="font-display text-xl font-bold">{pixPayment ? "Pagamento Pix" : "Seu Pedido"}</h2>
+                <Button variant="ghost" size="sm" onClick={() => pixPayment ? setPixPayment(null) : setShowCart(false)}><X className="h-5 w-5" /></Button>
               </div>
 
+              {pixPayment ? (
+                <div className="space-y-4">
+                  <div className="rounded-xl border bg-secondary/40 p-4 text-center space-y-3">
+                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <QrCode className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total do pedido</p>
+                      <p className="font-display text-3xl font-bold text-primary">R$ {pixPayment.amount.toFixed(2)}</p>
+                    </div>
+                    <div className="mx-auto w-fit rounded-xl border bg-white p-4">
+                      <QRCodeSVG value={pixPayment.copyPaste} size={220} includeMargin level="M" />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Pedido #{pixPayment.orderId.slice(0, 8).toUpperCase()}</p>
+                  </div>
+
+                  <div className="rounded-xl border p-4 space-y-3">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Chave Pix</p>
+                      <p className="font-medium break-all">{pixPayment.key}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Código copia e cola</p>
+                      <p className="text-xs break-all rounded-lg bg-secondary/50 p-3">{pixPayment.copyPaste}</p>
+                    </div>
+                    <Button
+                      className="w-full gap-2"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(pixPayment.copyPaste);
+                        toast.success("Código Pix copiado!");
+                      }}
+                    >
+                      <Copy className="h-4 w-4" /> Copiar código Pix
+                    </Button>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground text-center">Após pagar, aguarde a confirmação da lanchonete.</p>
+                </div>
+              ) : <>
               {cart.map(item => (
                 <div key={item.product.id} className="flex items-center justify-between py-2 border-b">
                   <div>
@@ -513,6 +610,7 @@ export default function PublicMenu() {
                 <Send className="h-4 w-4" />
                 {submitting ? "Enviando..." : "Finalizar Pedido"}
               </Button>
+              </>}
             </motion.div>
           </motion.div>
         )}
