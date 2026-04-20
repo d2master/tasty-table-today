@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useRestaurant } from "@/hooks/useRestaurant";
+import { useRestaurant, type PixKeyType } from "@/hooks/useRestaurant";
 import { useCategories } from "@/hooks/useCategories";
 import { useProducts } from "@/hooks/useProducts";
 import { useOrders } from "@/hooks/useOrders";
@@ -20,8 +20,9 @@ import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, Shoppi
 import { QRCodeSVG } from "qrcode.react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import type { OrderItem } from "@/hooks/useOrders";
+import { z } from "zod";
 
-type Tab = "orders" | "orders-old" | "trash" | "products" | "categories";
+type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "pix";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendente", color: "bg-warning text-warning-foreground" },
@@ -30,13 +31,43 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   cancelled: { label: "Cancelado", color: "bg-destructive text-destructive-foreground" },
 };
 
+const pixStatusLabels: Record<string, { label: string; color: string }> = {
+  pending: { label: "Pendente", color: "bg-secondary text-secondary-foreground" },
+  awaiting_pix: { label: "Aguardando Pix", color: "bg-warning text-warning-foreground" },
+  paid: { label: "Pago", color: "bg-success text-success-foreground" },
+  failed: { label: "Falhou", color: "bg-destructive text-destructive-foreground" },
+};
+
+const pixSchema = z.object({
+  pix_enabled: z.boolean(),
+  pix_key_type: z.enum(["cpf", "cnpj", "email", "phone", "random"]).nullable(),
+  pix_key: z.string().trim().nullable(),
+  pix_recipient_name: z.string().trim().nullable(),
+  pix_city: z.string().trim().nullable(),
+}).superRefine((value, ctx) => {
+  if (!value.pix_enabled) return;
+
+  if (!value.pix_key_type) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["pix_key_type"], message: "Selecione o tipo da chave Pix" });
+  }
+  if (!value.pix_key) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["pix_key"], message: "Informe a chave Pix" });
+  }
+  if (!value.pix_recipient_name) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["pix_recipient_name"], message: "Informe o nome do recebedor" });
+  }
+  if (!value.pix_city) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["pix_city"], message: "Informe a cidade" });
+  }
+});
+
 export default function Dashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
-  const { restaurant, isLoading: restLoading, updateTrashPassword } = useRestaurant();
+  const { restaurant, isLoading: restLoading, updateTrashPassword, updatePixSettings } = useRestaurant();
   const { categories, createCategory, updateCategory, deleteCategory } = useCategories(restaurant?.id);
   const { products, createProduct, updateProduct, deleteProduct } = useProducts(restaurant?.id);
-  const { orders, trashOrders, updateOrderStatus, softDeleteOrder, restoreOrder, permanentDeleteOrder, getOrderItems } = useOrders(restaurant?.id);
+  const { orders, trashOrders, updateOrderStatus, softDeleteOrder, restoreOrder, permanentDeleteOrder, markOrderAsPaid, getOrderItems } = useOrders(restaurant?.id);
 
   const [activeTab, setActiveTab] = useState<Tab>("orders");
   const [newCatName, setNewCatName] = useState("");
@@ -68,6 +99,13 @@ export default function Dashboard() {
   const [newTrashPassword, setNewTrashPassword] = useState("");
   const [resetStep, setResetStep] = useState<"verify" | "newpass">("verify");
   const [verifying, setVerifying] = useState(false);
+  const [pixForm, setPixForm] = useState({
+    pix_enabled: false,
+    pix_key_type: null as PixKeyType | null,
+    pix_key: "",
+    pix_recipient_name: "",
+    pix_city: "",
+  });
 
   // Track order count for new-order sound
   const prevOrderCountRef = useRef<number | null>(null);
@@ -129,6 +167,16 @@ export default function Dashboard() {
   }
 
   const menuUrl = `${window.location.origin}/cardapio/${restaurant.slug}`;
+
+  useEffect(() => {
+    setPixForm({
+      pix_enabled: Boolean((restaurant as any).pix_enabled),
+      pix_key_type: ((restaurant as any).pix_key_type as PixKeyType | null) ?? null,
+      pix_key: (restaurant as any).pix_key ?? "",
+      pix_recipient_name: (restaurant as any).pix_recipient_name ?? "",
+      pix_city: (restaurant as any).pix_city ?? "",
+    });
+  }, [restaurant]);
 
   const handleAddCategory = async () => {
     if (!newCatName.trim()) return;
@@ -303,6 +351,30 @@ export default function Dashboard() {
     dinheiro: "Dinheiro",
   };
 
+  const handleSavePixSettings = async () => {
+    const parsed = pixSchema.safeParse({
+      ...pixForm,
+      pix_key: pixForm.pix_key || null,
+      pix_recipient_name: pixForm.pix_recipient_name || null,
+      pix_city: pixForm.pix_city || null,
+    });
+
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0].message);
+      return;
+    }
+
+    await updatePixSettings.mutateAsync({
+      pix_enabled: parsed.data.pix_enabled,
+      pix_key_type: parsed.data.pix_enabled ? parsed.data.pix_key_type : null,
+      pix_key: parsed.data.pix_enabled ? parsed.data.pix_key : null,
+      pix_recipient_name: parsed.data.pix_enabled ? parsed.data.pix_recipient_name : null,
+      pix_city: parsed.data.pix_enabled ? parsed.data.pix_city : null,
+    });
+
+    toast.success("Configuração Pix salva!");
+  };
+
   const renderOrder = (order: typeof orders[0], isTrash = false) => {
     const isDelivery = order.order_type === "delivery";
     const mapsHref = order.delivery_maps_url
@@ -324,6 +396,9 @@ export default function Dashboard() {
           )}
           {isDelivery && order.payment_method && (
             <p className="text-sm text-muted-foreground">Pagamento: <span className="font-medium text-foreground">{paymentLabels[order.payment_method] || order.payment_method}</span></p>
+          )}
+          {order.payment_method === "pix" && order.payment_status && (
+            <Badge className={pixStatusLabels[order.payment_status]?.color}>{pixStatusLabels[order.payment_status]?.label}</Badge>
           )}
           {isDelivery && (order.delivery_address || mapsHref) && (
             <div className="text-sm text-muted-foreground">
@@ -374,6 +449,19 @@ export default function Dashboard() {
               </Button>
             ))}
           </div>
+          {order.payment_method === "pix" && order.payment_status !== "paid" && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs"
+              onClick={async () => {
+                await markOrderAsPaid.mutateAsync(order.id);
+                toast.success("Pagamento marcado como pago!");
+              }}
+            >
+              Marcar como pago
+            </Button>
+          )}
           {order.status === "preparing" && (
             <div className="flex items-center gap-2 flex-wrap">
               {!timers[order.id] ? (
@@ -474,6 +562,7 @@ export default function Dashboard() {
     { id: "orders" as Tab, label: "Pedidos do dia", icon: ShoppingBag, count: todayOrders.filter(o => o.status === "pending").length },
     { id: "orders-old" as Tab, label: "Pedidos anteriores", icon: ShoppingBag, count: olderOrders.length || undefined },
     { id: "trash" as Tab, label: "Lixeira", icon: Trash2, count: validTrashOrders.length || undefined },
+    { id: "pix" as Tab, label: "Pix", icon: QrCode },
     { id: "products" as Tab, label: "Produtos", icon: Package },
     { id: "categories" as Tab, label: "Categorias", icon: FolderOpen },
   ];
@@ -604,6 +693,62 @@ export default function Dashboard() {
             {validTrashOrders.length === 0 && <p className="text-muted-foreground">Nenhum pedido na lixeira.</p>}
             <div className="space-y-3">
               {validTrashOrders.map(o => renderOrder(o, true))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "pix" && (
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <h2 className="font-display text-xl font-bold">Configurações Pix</h2>
+              <p className="text-sm text-muted-foreground">Configure a chave fixa usada para gerar o QR Code do cliente.</p>
+            </div>
+
+            <div className="rounded-xl border bg-card p-4 space-y-4">
+              <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
+                <div>
+                  <p className="font-medium">Aceitar Pix</p>
+                  <p className="text-sm text-muted-foreground">Exibe QR Code e código copia e cola no checkout.</p>
+                </div>
+                <Switch checked={pixForm.pix_enabled} onCheckedChange={(value) => setPixForm((prev) => ({ ...prev, pix_enabled: value }))} />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tipo da chave</Label>
+                  <select
+                    value={pixForm.pix_key_type ?? ""}
+                    onChange={(e) => setPixForm((prev) => ({ ...prev, pix_key_type: (e.target.value || null) as PixKeyType | null }))}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <option value="">Selecione</option>
+                    <option value="cpf">CPF</option>
+                    <option value="cnpj">CNPJ</option>
+                    <option value="email">E-mail</option>
+                    <option value="phone">Telefone</option>
+                    <option value="random">Chave aleatória</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Chave Pix</Label>
+                  <Input value={pixForm.pix_key} onChange={(e) => setPixForm((prev) => ({ ...prev, pix_key: e.target.value }))} placeholder="Digite a chave Pix" maxLength={120} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Nome do recebedor</Label>
+                  <Input value={pixForm.pix_recipient_name} onChange={(e) => setPixForm((prev) => ({ ...prev, pix_recipient_name: e.target.value }))} placeholder="Nome que aparece no Pix" maxLength={25} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Cidade</Label>
+                  <Input value={pixForm.pix_city} onChange={(e) => setPixForm((prev) => ({ ...prev, pix_city: e.target.value }))} placeholder="Ex: São Paulo" maxLength={15} />
+                </div>
+              </div>
+
+              <Button onClick={handleSavePixSettings} disabled={updatePixSettings.isPending}>
+                {updatePixSettings.isPending ? "Salvando..." : "Salvar configuração Pix"}
+              </Button>
             </div>
           </div>
         )}
