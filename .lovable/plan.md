@@ -1,54 +1,151 @@
 
-## Plano: Opção de Delivery no Carrinho
+Implementar pagamento Pix no fechamento do pedido com QR Code e “copia e cola” gerados a partir de uma chave Pix fixa da lanchonete, mantendo a experiência alinhada ao design atual.
 
-Adicionar modalidade **Delivery** no checkout do cardápio público, mantendo o fluxo atual de "Mesa" como alternativa.
+### O que será entregue
+- No dashboard da lanchonete: configuração da chave Pix da loja.
+- No checkout do cliente: quando selecionar **Pix**, após criar o pedido o sistema mostra:
+  - QR Code Pix com o valor exato do pedido
+  - código “copia e cola”
+  - chave Pix da lanchonete
+  - valor do pedido em destaque
+- No dashboard: o pedido passa a exibir status de pagamento para o dono acompanhar.
+- Confirmação de pagamento: como a opção escolhida foi **chave Pix fixa**, a confirmação não poderá ser automática pelo banco. O fluxo seguro será **manual pelo dono da lanchonete**.
 
-### 1. Banco de dados (migration)
-Adicionar colunas em `orders`:
-- `order_type` text default `'table'` ('table' | 'delivery')
-- `payment_method` text nullable ('pix' | 'debito' | 'credito' | 'dinheiro')
-- `delivery_address` text nullable
-- `delivery_lat` numeric nullable
-- `delivery_lng` numeric nullable
-- `delivery_maps_url` text nullable
+### 1. Banco de dados
+Criar uma migration para adicionar dados de Pix por lanchonete e status de pagamento por pedido.
 
-`table_number` continua existindo, mas fica vazio quando for delivery.
+**Tabela `restaurants`**
+Adicionar colunas:
+- `pix_enabled` boolean default false
+- `pix_key` text nullable
+- `pix_key_type` text nullable (`cpf`, `cnpj`, `email`, `phone`, `random`)
+- `pix_recipient_name` text nullable
+- `pix_city` text nullable
 
-### 2. Checkout no `PublicMenu.tsx`
-No modal de finalização do pedido, adicionar um seletor (botões/tabs nativos, sem Radix Portal — respeitando a constraint de UI) para escolher:
-- **Mesa** (fluxo atual: nome + telefone + nº mesa)
-- **Delivery** (novos campos abaixo)
+**Tabela `orders`**
+Adicionar colunas:
+- `payment_status` text default `'pending'` (`pending`, `awaiting_pix`, `paid`, `failed`)
+- `pix_copy_paste` text nullable
+- `pix_paid_at` timestamptz nullable
 
-Campos do delivery:
-- Nome (obrigatório)
-- Telefone (obrigatório, com validação já existente)
-- Forma de pagamento — 4 botões (Pix / Débito / Crédito / Dinheiro), seleção única
-- Endereço — duas abas:
-  - **Digitar endereço**: textarea livre
-  - **Google Maps**: campo de busca com autocomplete + visualização do pin selecionado, salvando endereço formatado, lat/lng e link do maps
+Também adicionar constraints simples de domínio para os enums textuais.
 
-Validação com zod (regra do projeto): nome ≤100, telefone formato válido, pagamento obrigatório, endereço não vazio.
+### 2. Dashboard da lanchonete
+Adicionar uma área de configuração Pix no dashboard, usando inputs nativos e visual consistente com o painel atual:
+- toggle “Aceitar Pix”
+- tipo da chave
+- chave Pix
+- nome do recebedor
+- cidade
 
-### 3. Integração Google Maps
-Usar **Google Places Autocomplete + Map**. Requer chave da Google Maps Platform (Places API + Maps JavaScript API habilitadas).
+Validações:
+- nome do recebedor obrigatório quando Pix estiver ativo
+- cidade obrigatória quando Pix estiver ativo
+- chave obrigatória quando Pix estiver ativo
+- validação por tipo de chave com zod
 
-A chave do Maps é **publishable** (restrita por domínio no console Google), então pode ficar no front via variável. Vou pedir a chave através do fluxo de secrets para uso seguro e a injeto no carregamento do script.
+Salvar isso na própria lanchonete para que cada restaurante tenha sua configuração independente.
 
-Fallback: se o usuário não fornecer chave agora, o modo "Google Maps" fica desabilitado com aviso "Configure a chave do Google Maps", e o modo "Digitar endereço" funciona normalmente.
+### 3. Checkout do cliente
+Aproveitar o fluxo já existente em `PublicMenu.tsx`, onde `payment_method` já possui a opção `pix`.
 
-### 4. Dashboard do dono (`Dashboard.tsx`)
-Nos cards de pedido exibir:
-- Badge "Delivery" ou "Mesa nº X"
-- Quando delivery: endereço completo, link "Abrir no Maps" (usa `delivery_maps_url` ou monta com lat/lng), forma de pagamento
+Novo comportamento:
+- cliente monta o pedido normalmente
+- seleciona **Delivery** ou **Mesa**
+- escolhe **Pix**
+- ao clicar em “Finalizar Pedido”, o pedido é criado
+- se a lanchonete tiver Pix ativo e configurado:
+  - gerar payload Pix com valor do pedido
+  - salvar o payload em `orders.pix_copy_paste`
+  - abrir uma etapa/modal de pagamento mostrando QR Code + código
+  - atualizar `payment_status` para `awaiting_pix`
+- se a lanchonete não tiver Pix configurado:
+  - bloquear a finalização em Pix com mensagem clara
+  - manter as demais formas de pagamento funcionando
 
-### 5. Hook `useOrders.ts` e tipos
-Estender `Order` com os novos campos opcionais.
+### 4. Geração do QR Code Pix
+Usar o `QRCodeSVG` já presente no projeto para renderizar o QR.
 
-### Perguntas antes de implementar
+Gerar no front um payload Pix EMV/BR Code com:
+- chave Pix da lanchonete
+- nome do recebedor
+- cidade
+- valor do pedido
+- identificador do pedido
 
-<lov-questions>
-<lov-question header="Google Maps" question="Como quer tratar a integração com Google Maps?" multiSelect="false">
-<lov-option label="Já tenho chave da Google Maps Platform">Vou fornecer agora; habilita autocomplete + pin no mapa.</lov-option>
-<lov-option label="Implementar sem mapa por enquanto">Só campo de endereço escrito; deixo o modo Maps desabilitado até eu fornecer a chave.</lov-option>
-<lov-option label="Usar link manual do Google Maps">Cliente cola o link do Maps no campo, sem autocomplete (sem necessidade de API key).</lov-option>
-</lov-questions>
+Também exibir:
+- botão “Copiar código Pix”
+- chave Pix em texto
+- valor total
+
+### 5. Confirmação de pagamento
+Como foi definido **chave Pix fixa** e não integração com provedor/banco:
+- não haverá confirmação automática real do pagamento
+- o dono da lanchonete confirmará manualmente no dashboard
+
+No dashboard, para pedidos com `payment_method = 'pix'`:
+- mostrar badge de pagamento:
+  - “Aguardando Pix”
+  - “Pago”
+- adicionar botão “Marcar como pago”
+- ao marcar como pago, preencher `payment_status = 'paid'` e `pix_paid_at = now()`
+
+Opcionalmente, o status operacional do pedido continua separado do status financeiro:
+- pedido: `pending`, `preparing`, `done`, `cancelled`
+- pagamento: `awaiting_pix`, `paid`
+
+Isso evita misturar preparo com financeiro.
+
+### 6. Ajustes visuais
+Sem fugir do padrão atual:
+- cartão de pagamento Pix com borda/sombra suave
+- QR Code dentro de card claro
+- valor em destaque com tipografia já usada no projeto
+- badge discreta “Pix” e “Aguardando pagamento”
+- manter componentes nativos, sem Select com Portal
+
+### 7. Arquivos que serão ajustados
+- `src/pages/PublicMenu.tsx`
+  - etapa de pagamento Pix após finalizar pedido
+  - QR Code, cópia do código e mensagens
+- `src/pages/Dashboard.tsx`
+  - configuração Pix da lanchonete
+  - badge/status e ação “Marcar como pago”
+- `src/hooks/useOrders.ts`
+  - ampliar tipo `Order` com `payment_status`, `pix_copy_paste`, `pix_paid_at`
+  - mutation para marcar pagamento
+- `src/hooks/useRestaurant.ts`
+  - mutation para salvar configuração Pix
+- `src/integrations/supabase/types.ts`
+  - refletirá as novas colunas automaticamente após a migration
+- nova migration em `supabase/migrations/...`
+
+### 8. Regras importantes
+- Não usar `.select()` após insert do pedido público.
+- Continuar gerando o UUID do pedido no client.
+- Validar entradas no front com zod.
+- Manter a UI sem componentes com Portal.
+- Não prometer “pagamento confirmado automaticamente”, porque isso só seria possível com integração real com banco/provedor Pix.
+
+### Detalhes técnicos
+```text
+Fluxo Pix com chave fixa
+
+Cliente fecha pedido
+  -> pedido é criado
+  -> payment_method = pix
+  -> payment_status = awaiting_pix
+  -> sistema gera BR Code com valor do pedido
+  -> cliente vê QR Code + copia e cola
+  -> dono confere recebimento no banco
+  -> dono marca "Pago" no dashboard
+  -> payment_status = paid
+```
+
+### Limitação desta abordagem
+Com **chave Pix fixa**, o sistema consegue:
+- gerar QR Code com valor
+- mostrar chave e código copia-e-cola
+- organizar o pedido com status financeiro
+
+Mas **não consegue validar sozinho se o dinheiro caiu**. Para confirmação automática de verdade, depois será necessário integrar um provedor Pix/API bancária.
