@@ -16,7 +16,7 @@ type OrderMode = "table" | "delivery";
 type PaymentMethod = "pix" | "debito" | "credito" | "dinheiro";
 type AddressMode = "manual" | "maps";
 
-const phoneRegex = /^[\d\s()+\-]{8,20}$/;
+const phoneRegex = /^[\d\s()+-]{8,20}$/;
 
 interface Restaurant {
   id: string;
@@ -99,7 +99,18 @@ export default function PublicMenu() {
     (async () => {
       const { data: rest } = await supabase.from("restaurants").select("*").eq("slug", slug).maybeSingle();
       if (!rest) { setNotFound(true); setLoading(false); return; }
-      setRestaurant(rest);
+      setRestaurant({
+        id: rest.id,
+        name: rest.name,
+        slug: rest.slug,
+        description: rest.description,
+        is_blocked: rest.is_blocked,
+        pix_enabled: rest.pix_enabled,
+        pix_key: rest.pix_key,
+        pix_key_type: (rest.pix_key_type as Restaurant["pix_key_type"]) ?? null,
+        pix_recipient_name: rest.pix_recipient_name,
+        pix_city: rest.pix_city,
+      });
       if (rest.is_blocked) { setLoading(false); return; }
 
       const [catRes, prodRes] = await Promise.all([
