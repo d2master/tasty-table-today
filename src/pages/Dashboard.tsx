@@ -146,6 +146,18 @@ export default function Dashboard() {
     if (!authLoading && !user) navigate("/login");
   }, [authLoading, user, navigate]);
 
+  useEffect(() => {
+    if (!restaurant) return;
+
+    setPixForm({
+      pix_enabled: Boolean((restaurant as any).pix_enabled),
+      pix_key_type: ((restaurant as any).pix_key_type as PixKeyType | null) ?? null,
+      pix_key: (restaurant as any).pix_key ?? "",
+      pix_recipient_name: (restaurant as any).pix_recipient_name ?? "",
+      pix_city: (restaurant as any).pix_city ?? "",
+    });
+  }, [restaurant]);
+
   if (authLoading || restLoading) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando...</div>;
   }
@@ -167,17 +179,6 @@ export default function Dashboard() {
   }
 
   const menuUrl = `${window.location.origin}/cardapio/${restaurant.slug}`;
-
-  useEffect(() => {
-    setPixForm({
-      pix_enabled: Boolean((restaurant as any).pix_enabled),
-      pix_key_type: ((restaurant as any).pix_key_type as PixKeyType | null) ?? null,
-      pix_key: (restaurant as any).pix_key ?? "",
-      pix_recipient_name: (restaurant as any).pix_recipient_name ?? "",
-      pix_city: (restaurant as any).pix_city ?? "",
-    });
-  }, [restaurant]);
-
   const handleAddCategory = async () => {
     if (!newCatName.trim()) return;
     await createCategory.mutateAsync({ name: newCatName.trim() });
