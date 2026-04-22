@@ -335,6 +335,16 @@ export type Database = {
           trash_password: string
         }[]
       }
+      get_restaurant_pix_for_checkout: {
+        Args: { _slug: string }
+        Returns: {
+          pix_city: string
+          pix_enabled: boolean
+          pix_key: string
+          pix_key_type: string
+          pix_recipient_name: string
+        }[]
+      }
       is_customer_blocked: {
         Args: { _phone: string; _restaurant_id: string }
         Returns: boolean
