@@ -326,6 +326,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_my_restaurant_sensitive: {
+        Args: never
+        Returns: {
+          id: string
+          pix_key: string
+          pix_key_type: string
+          trash_password: string
+        }[]
+      }
       is_customer_blocked: {
         Args: { _phone: string; _restaurant_id: string }
         Returns: boolean
@@ -334,6 +343,10 @@ export type Database = {
       is_restaurant_owner: {
         Args: { _restaurant_id: string }
         Returns: boolean
+      }
+      permanent_delete_order_with_password: {
+        Args: { _order_id: string; _password: string }
+        Returns: undefined
       }
     }
     Enums: {
