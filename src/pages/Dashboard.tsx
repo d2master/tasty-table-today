@@ -64,7 +64,7 @@ const pixSchema = z.object({
 export default function Dashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
-  const { restaurant, isLoading: restLoading, updateTrashPassword, updatePixSettings } = useRestaurant();
+  const { restaurant, isLoading: restLoading, updateTrashPassword, updatePixSettings, setPixPassword } = useRestaurant();
   const { categories, createCategory, updateCategory, deleteCategory } = useCategories(restaurant?.id);
   const { products, createProduct, updateProduct, deleteProduct } = useProducts(restaurant?.id);
   const { orders, trashOrders, updateOrderStatus, softDeleteOrder, restoreOrder, permanentDeleteOrder, markOrderAsPaid, getOrderItems } = useOrders(restaurant?.id);
@@ -99,6 +99,18 @@ export default function Dashboard() {
   const [newTrashPassword, setNewTrashPassword] = useState("");
   const [resetStep, setResetStep] = useState<"verify" | "newpass">("verify");
   const [verifying, setVerifying] = useState(false);
+
+  // Reset Pix password dialog
+  const [resetPixDialog, setResetPixDialog] = useState(false);
+  const [pixAccountPassword, setPixAccountPassword] = useState("");
+  const [newPixPassword, setNewPixPassword] = useState("");
+  const [resetPixStep, setResetPixStep] = useState<"verify" | "newpass">("verify");
+  const [verifyingPix, setVerifyingPix] = useState(false);
+
+  // Confirm Pix change dialog (asks current 6-digit PIN before saving)
+  const [confirmPixDialog, setConfirmPixDialog] = useState(false);
+  const [pixConfirmPassword, setPixConfirmPassword] = useState("");
+
   const [pixForm, setPixForm] = useState({
     pix_enabled: false,
     pix_key_type: null as PixKeyType | null,
@@ -363,7 +375,7 @@ export default function Dashboard() {
     dinheiro: "Dinheiro",
   };
 
-  const handleSavePixSettings = async () => {
+  const handleSavePixSettings = () => {
     const parsed = pixSchema.safeParse({
       ...pixForm,
       pix_key: pixForm.pix_key || null,
@@ -376,15 +388,77 @@ export default function Dashboard() {
       return;
     }
 
-    await updatePixSettings.mutateAsync({
-      pix_enabled: parsed.data.pix_enabled,
-      pix_key_type: parsed.data.pix_enabled ? parsed.data.pix_key_type : null,
-      pix_key: parsed.data.pix_enabled ? parsed.data.pix_key : null,
-      pix_recipient_name: parsed.data.pix_enabled ? parsed.data.pix_recipient_name : null,
-      pix_city: parsed.data.pix_enabled ? parsed.data.pix_city : null,
-    });
+    // Open confirmation dialog asking for the 6-digit Pix password
+    setPixConfirmPassword("");
+    setConfirmPixDialog(true);
+  };
 
-    toast.success("Configuração Pix salva!");
+  const handleConfirmSavePix = async () => {
+    if (!/^\d{6}$/.test(pixConfirmPassword)) {
+      toast.error("Informe a senha do Pix (6 dígitos)");
+      return;
+    }
+    const parsed = pixSchema.safeParse({
+      ...pixForm,
+      pix_key: pixForm.pix_key || null,
+      pix_recipient_name: pixForm.pix_recipient_name || null,
+      pix_city: pixForm.pix_city || null,
+    });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0].message);
+      return;
+    }
+
+    try {
+      await updatePixSettings.mutateAsync({
+        password: pixConfirmPassword,
+        settings: {
+          pix_enabled: parsed.data.pix_enabled,
+          pix_key_type: parsed.data.pix_enabled ? parsed.data.pix_key_type : null,
+          pix_key: parsed.data.pix_enabled ? parsed.data.pix_key : null,
+          pix_recipient_name: parsed.data.pix_enabled ? parsed.data.pix_recipient_name : null,
+          pix_city: parsed.data.pix_enabled ? parsed.data.pix_city : null,
+        },
+      });
+      toast.success("Configuração Pix salva!");
+      setConfirmPixDialog(false);
+      setPixConfirmPassword("");
+    } catch (err: any) {
+      const msg = err?.message || "";
+      if (msg.includes("Invalid password")) toast.error("Senha do Pix incorreta!");
+      else if (msg.includes("not configured")) toast.error("Senha do Pix ainda não configurada. Redefina antes de salvar.");
+      else toast.error("Erro ao salvar configuração Pix.");
+    }
+  };
+
+  const handleVerifyPixAccountPassword = async () => {
+    if (!user?.email) return;
+    setVerifyingPix(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: pixAccountPassword });
+      if (error) {
+        toast.error("Senha da conta incorreta!");
+        return;
+      }
+      setResetPixStep("newpass");
+    } catch {
+      toast.error("Erro ao verificar senha.");
+    } finally {
+      setVerifyingPix(false);
+    }
+  };
+
+  const handleResetPixPassword = async () => {
+    try {
+      await setPixPassword.mutateAsync(newPixPassword);
+      toast.success("Senha do Pix redefinida com sucesso!");
+      setResetPixDialog(false);
+      setPixAccountPassword("");
+      setNewPixPassword("");
+      setResetPixStep("verify");
+    } catch {
+      toast.error("Erro ao redefinir senha.");
+    }
   };
 
   const renderOrder = (order: typeof orders[0], isTrash = false) => {
