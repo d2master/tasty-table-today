@@ -792,6 +792,7 @@ export default function Dashboard() {
 
             <Button variant="outline" size="sm" onClick={() => { setResetPixDialog(true); setResetPixStep("verify"); setPixAccountPassword(""); setNewPixPassword(""); }}>
               🔑 Redefinir senha do Pix
+            </Button>
 
             <div className="rounded-xl border bg-card p-4 space-y-4">
               <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
