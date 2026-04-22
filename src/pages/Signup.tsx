@@ -12,6 +12,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [storeName, setStoreName] = useState("");
   const [trashPassword, setTrashPassword] = useState("");
+  const [pixPassword, setPixPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -23,6 +24,10 @@ export default function SignupPage() {
     }
     if (!/^\d{4}$/.test(trashPassword)) {
       toast.error("A senha da lixeira deve ter exatamente 4 dígitos numéricos");
+      return;
+    }
+    if (!/^\d{6}$/.test(pixPassword)) {
+      toast.error("A senha do Pix deve ter exatamente 6 dígitos numéricos");
       return;
     }
     setLoading(true);
@@ -46,6 +51,7 @@ export default function SignupPage() {
         slug,
         owner_id: authData.user.id,
         trash_password: trashPassword,
+        pix_password: pixPassword,
       });
 
       if (restaurantError) {
@@ -75,6 +81,10 @@ export default function SignupPage() {
           <div className="space-y-2">
             <Label htmlFor="trashPassword">Senha da Lixeira (4 dígitos)</Label>
             <Input id="trashPassword" type="text" inputMode="numeric" maxLength={4} value={trashPassword} onChange={e => setTrashPassword(e.target.value.replace(/\D/g, "").slice(0, 4))} required placeholder="1234" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="pixPassword">Senha do Pix (6 dígitos)</Label>
+            <Input id="pixPassword" type="text" inputMode="numeric" maxLength={6} value={pixPassword} onChange={e => setPixPassword(e.target.value.replace(/\D/g, "").slice(0, 6))} required placeholder="123456" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
