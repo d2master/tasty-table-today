@@ -787,8 +787,11 @@ export default function Dashboard() {
           <div className="space-y-4">
             <div className="space-y-1">
               <h2 className="font-display text-xl font-bold">Configurações Pix</h2>
-              <p className="text-sm text-muted-foreground">Configure a chave fixa usada para gerar o QR Code do cliente.</p>
+              <p className="text-sm text-muted-foreground">Configure a chave fixa usada para gerar o QR Code do cliente. Toda alteração exige a senha do Pix (6 dígitos).</p>
             </div>
+
+            <Button variant="outline" size="sm" onClick={() => { setResetPixDialog(true); setResetPixStep("verify"); setPixAccountPassword(""); setNewPixPassword(""); }}>
+              🔑 Redefinir senha do Pix
 
             <div className="rounded-xl border bg-card p-4 space-y-4">
               <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
