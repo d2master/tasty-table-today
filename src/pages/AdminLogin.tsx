@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,7 @@ export default function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [seeding, setSeeding] = useState(true);
-
-  useEffect(() => {
-    // Garante que o admin inicial existe
-    supabase.functions.invoke("admin-seed").finally(() => setSeeding(false));
-  }, []);
+  const seeding = false;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

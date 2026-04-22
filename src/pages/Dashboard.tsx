@@ -294,12 +294,23 @@ export default function Dashboard() {
 
   const handlePermanentDelete = async () => {
     if (!deletePasswordDialog.orderId) return;
-    const trashPw = (restaurant as any).trash_password;
-    if (deletePassword !== trashPw) {
-      toast.error("Senha incorreta!");
+    // Server-side verification: the RPC validates the trash password using
+    // the service-definer function and only deletes if it matches.
+    const { error } = await supabase.rpc("permanent_delete_order_with_password", {
+      _order_id: deletePasswordDialog.orderId,
+      _password: deletePassword,
+    });
+    if (error) {
+      const msg = (error.message || "").toLowerCase();
+      if (msg.includes("invalid password")) {
+        toast.error("Senha incorreta!");
+      } else if (msg.includes("not configured")) {
+        toast.error("Senha da lixeira não configurada.");
+      } else {
+        toast.error("Não foi possível excluir o pedido.");
+      }
       return;
     }
-    await permanentDeleteOrder.mutateAsync(deletePasswordDialog.orderId);
     toast.success("Pedido excluído permanentemente!");
     setDeletePasswordDialog({ open: false, orderId: null });
     setDeletePassword("");

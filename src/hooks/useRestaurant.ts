@@ -20,13 +20,27 @@ export function useRestaurant() {
     queryKey: ["restaurant", user?.id],
     queryFn: async () => {
       if (!user) return null;
-      const { data, error } = await supabase
+      // Fetch only the columns the role has SELECT privilege on. Sensitive
+      // columns (trash_password, pix_key, pix_key_type) are never exposed via
+      // the table's column grants and must be fetched through a SECURITY DEFINER
+      // RPC restricted to the authenticated owner.
+      const { data: base, error } = await supabase
         .from("restaurants")
-        .select("*")
+        .select("id, name, slug, description, logo_url, is_blocked, pix_enabled, pix_recipient_name, pix_city, created_at, updated_at, owner_id")
         .eq("owner_id", user.id)
         .maybeSingle();
       if (error) throw error;
-      return data;
+      if (!base) return null;
+
+      const { data: sensitive } = await supabase.rpc("get_my_restaurant_sensitive");
+      const s = Array.isArray(sensitive) ? sensitive.find((r: any) => r.id === base.id) : null;
+
+      return {
+        ...base,
+        trash_password: s?.trash_password ?? null,
+        pix_key: s?.pix_key ?? null,
+        pix_key_type: (s?.pix_key_type as PixKeyType | null) ?? null,
+      };
     },
     enabled: !!user,
   });

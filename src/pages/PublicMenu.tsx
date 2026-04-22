@@ -97,7 +97,11 @@ export default function PublicMenu() {
   useEffect(() => {
     if (!slug) return;
     (async () => {
-      const { data: rest } = await supabase.from("restaurants").select("*").eq("slug", slug).maybeSingle();
+      const { data: rest } = await supabase
+        .from("restaurants")
+        .select("id, name, slug, description, is_blocked, pix_enabled, pix_recipient_name, pix_city, logo_url")
+        .eq("slug", slug)
+        .maybeSingle();
       if (!rest) { setNotFound(true); setLoading(false); return; }
       setRestaurant({
         id: rest.id,
@@ -106,8 +110,8 @@ export default function PublicMenu() {
         description: rest.description,
         is_blocked: rest.is_blocked,
         pix_enabled: rest.pix_enabled,
-        pix_key: rest.pix_key,
-        pix_key_type: (rest.pix_key_type as Restaurant["pix_key_type"]) ?? null,
+        pix_key: null,
+        pix_key_type: null,
         pix_recipient_name: rest.pix_recipient_name,
         pix_city: rest.pix_city,
       });
@@ -196,9 +200,7 @@ export default function PublicMenu() {
       const needsPix = paymentMethod === "pix";
 
       if (needsPix) {
-        const missingPixConfig = !restaurant?.pix_enabled || !restaurant.pix_key || !restaurant.pix_key_type || !restaurant.pix_recipient_name || !restaurant.pix_city;
-
-        if (missingPixConfig) {
+        if (!restaurant?.pix_enabled || !restaurant.pix_recipient_name || !restaurant.pix_city) {
           toast.error("A lanchonete ainda não configurou o Pix.");
           return;
         }
@@ -221,17 +223,29 @@ export default function PublicMenu() {
     setSubmitting(true);
     try {
       const orderId = crypto.randomUUID();
-      const pixCopyPaste = paymentMethod === "pix"
-        ? generatePixPayload({
-            key: restaurant!.pix_key!,
-            keyType: restaurant!.pix_key_type!,
-            recipientName: restaurant!.pix_recipient_name!,
-            city: restaurant!.pix_city!,
-            amount: cartTotal,
-            txid: orderId.replace(/-/g, "").slice(0, 25),
-            description: `${restaurant!.name} ${orderMode === "delivery" ? "DELIVERY" : "MESA"}`,
-          })
-        : null;
+      let pixCopyPaste: string | null = null;
+      let pixKeyForDisplay: string | null = null;
+
+      if (paymentMethod === "pix") {
+        const { data: pixCfg, error: pixErr } = await supabase.rpc("get_restaurant_pix_for_checkout", { _slug: slug! });
+        if (pixErr || !pixCfg || !pixCfg[0]?.pix_enabled || !pixCfg[0]?.pix_key || !pixCfg[0]?.pix_key_type) {
+          console.error("Pix config fetch error:", pixErr);
+          toast.error("Não foi possível gerar o pagamento Pix. Tente outra forma de pagamento.");
+          setSubmitting(false);
+          return;
+        }
+        const cfg = pixCfg[0];
+        pixKeyForDisplay = cfg.pix_key;
+        pixCopyPaste = generatePixPayload({
+          key: cfg.pix_key!,
+          keyType: cfg.pix_key_type as "cpf" | "cnpj" | "email" | "phone" | "random",
+          recipientName: cfg.pix_recipient_name ?? restaurant!.name,
+          city: cfg.pix_city ?? "BRASIL",
+          amount: cartTotal,
+          txid: orderId.replace(/-/g, "").slice(0, 25),
+          description: `${restaurant!.name} ${orderMode === "delivery" ? "DELIVERY" : "MESA"}`,
+        });
+      }
 
       const { error: orderError } = await supabase.from("orders").insert({
         id: orderId,
@@ -242,7 +256,7 @@ export default function PublicMenu() {
 
       if (orderError) {
         console.error("Order insert error:", orderError);
-        toast.error("Erro ao enviar pedido: " + orderError.message);
+        toast.error("Erro ao enviar pedido. Tente novamente.");
         setSubmitting(false);
         return;
       }
@@ -258,13 +272,13 @@ export default function PublicMenu() {
       const { error: itemsError } = await supabase.from("order_items").insert(items);
       if (itemsError) {
         console.error("Items insert error:", itemsError);
-        toast.error("Erro ao salvar itens: " + itemsError.message);
+        toast.error("Erro ao salvar itens do pedido. Tente novamente.");
         setSubmitting(false);
         return;
       }
 
-      if (paymentMethod === "pix" && pixCopyPaste && restaurant?.pix_key) {
-        setPixPayment({ copyPaste: pixCopyPaste, key: restaurant.pix_key, amount: cartTotal, orderId });
+      if (paymentMethod === "pix" && pixCopyPaste && pixKeyForDisplay) {
+        setPixPayment({ copyPaste: pixCopyPaste, key: pixKeyForDisplay, amount: cartTotal, orderId });
         resetCheckoutState();
         toast.success("Pedido enviado! Agora finalize o pagamento via Pix.");
         return;
