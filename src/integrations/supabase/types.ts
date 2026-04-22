@@ -280,6 +280,7 @@ export type Database = {
           pix_enabled: boolean
           pix_key: string | null
           pix_key_type: string | null
+          pix_password: string | null
           pix_recipient_name: string | null
           slug: string
           trash_password: string | null
@@ -297,6 +298,7 @@ export type Database = {
           pix_enabled?: boolean
           pix_key?: string | null
           pix_key_type?: string | null
+          pix_password?: string | null
           pix_recipient_name?: string | null
           slug: string
           trash_password?: string | null
@@ -314,6 +316,7 @@ export type Database = {
           pix_enabled?: boolean
           pix_key?: string | null
           pix_key_type?: string | null
+          pix_password?: string | null
           pix_recipient_name?: string | null
           slug?: string
           trash_password?: string | null
@@ -332,6 +335,7 @@ export type Database = {
           id: string
           pix_key: string
           pix_key_type: string
+          pix_password: string
           trash_password: string
         }[]
       }
@@ -356,6 +360,18 @@ export type Database = {
       }
       permanent_delete_order_with_password: {
         Args: { _order_id: string; _password: string }
+        Returns: undefined
+      }
+      set_pix_password: { Args: { _new_password: string }; Returns: undefined }
+      update_pix_settings_with_password: {
+        Args: {
+          _password: string
+          _pix_city: string
+          _pix_enabled: boolean
+          _pix_key: string
+          _pix_key_type: string
+          _pix_recipient_name: string
+        }
         Returns: undefined
       }
     }
