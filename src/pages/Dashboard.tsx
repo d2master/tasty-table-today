@@ -1045,6 +1045,78 @@ export default function Dashboard() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Confirm Pix change dialog (current 6-digit PIN) */}
+      <Dialog open={confirmPixDialog} onOpenChange={open => { if (!open) { setConfirmPixDialog(false); setPixConfirmPassword(""); } }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Confirmar alteração do Pix</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">Digite a senha do Pix (6 dígitos) para confirmar a alteração.</p>
+            <Input
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="******"
+              value={pixConfirmPassword}
+              onChange={e => setPixConfirmPassword(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              className="text-center text-lg tracking-widest"
+            />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setConfirmPixDialog(false)}>Cancelar</Button>
+              <Button onClick={handleConfirmSavePix} disabled={pixConfirmPassword.length !== 6 || updatePixSettings.isPending}>
+                {updatePixSettings.isPending ? "Salvando..." : "Confirmar"}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Pix password dialog */}
+      <Dialog open={resetPixDialog} onOpenChange={open => { if (!open) { setResetPixDialog(false); setResetPixStep("verify"); setPixAccountPassword(""); setNewPixPassword(""); } }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Redefinir senha do Pix</DialogTitle>
+          </DialogHeader>
+          {resetPixStep === "verify" ? (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">Para sua segurança, confirme a senha da sua conta.</p>
+              <Input
+                type="password"
+                placeholder="Senha da conta"
+                value={pixAccountPassword}
+                onChange={e => setPixAccountPassword(e.target.value)}
+              />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setResetPixDialog(false)}>Cancelar</Button>
+                <Button onClick={handleVerifyPixAccountPassword} disabled={!pixAccountPassword || verifyingPix}>
+                  {verifyingPix ? "Verificando..." : "Confirmar"}
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">Digite a nova senha do Pix (6 dígitos numéricos).</p>
+              <Input
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="******"
+                value={newPixPassword}
+                onChange={e => setNewPixPassword(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                className="text-center text-lg tracking-widest"
+              />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setResetPixDialog(false)}>Cancelar</Button>
+                <Button onClick={handleResetPixPassword} disabled={newPixPassword.length !== 6 || setPixPassword.isPending}>
+                  {setPixPassword.isPending ? "Salvando..." : "Salvar"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
