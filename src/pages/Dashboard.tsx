@@ -119,6 +119,10 @@ export default function Dashboard() {
     pix_city: "",
   });
 
+  // Tables config
+  const [tableCountInput, setTableCountInput] = useState("");
+  const [savingTableCount, setSavingTableCount] = useState(false);
+
   // Track order count for new-order sound
   const prevOrderCountRef = useRef<number | null>(null);
 
