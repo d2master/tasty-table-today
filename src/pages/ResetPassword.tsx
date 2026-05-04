@@ -36,7 +36,8 @@ export default function ResetPassword() {
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
     if (error) {
-      toast.error(error.message);
+      console.error(error);
+      toast.error("Não foi possível redefinir a senha. Solicite um novo link.");
     } else {
       toast.success("Senha redefinida com sucesso!");
       navigate("/login");

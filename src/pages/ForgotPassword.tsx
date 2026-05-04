@@ -19,10 +19,10 @@ export default function ForgotPassword() {
     });
     setLoading(false);
     if (error) {
-      toast.error(error.message);
-    } else {
-      setSent(true);
+      console.error(error);
     }
+    // Always show success to avoid user enumeration
+    setSent(true);
   };
 
   return (

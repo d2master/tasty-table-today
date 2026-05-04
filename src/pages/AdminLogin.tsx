@@ -44,8 +44,8 @@ export default function AdminLogin() {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/admin/reset-password`,
     });
-    if (error) toast.error(error.message);
-    else toast.success("Email de redefinição enviado");
+    if (error) console.error(error);
+    toast.success("Se o email existir, um link de redefinição foi enviado");
   };
 
   return (
