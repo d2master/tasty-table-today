@@ -222,63 +222,31 @@ export default function PublicMenu() {
 
     setSubmitting(true);
     try {
-      const orderId = crypto.randomUUID();
-      let pixCopyPaste: string | null = null;
-      let pixKeyForDisplay: string | null = null;
+      const { data, error } = await supabase.functions.invoke("place-order", {
+        body: {
+          slug,
+          order_type: orderMode,
+          customer_name: orderPayload.customer_name ?? "",
+          customer_phone: orderPayload.customer_phone ?? "",
+          table_number: orderPayload.table_number ?? "",
+          payment_method: paymentMethod || undefined,
+          delivery_address: orderPayload.delivery_address ?? null,
+          delivery_maps_url: orderPayload.delivery_maps_url ?? null,
+          items: cart.map(c => ({ product_id: c.product.id, quantity: c.quantity })),
+        },
+      });
 
-      if (paymentMethod === "pix") {
-        const { data: pixCfg, error: pixErr } = await supabase.rpc("get_restaurant_pix_for_checkout", { _slug: slug! });
-        if (pixErr || !pixCfg || !pixCfg[0]?.pix_enabled || !pixCfg[0]?.pix_key || !pixCfg[0]?.pix_key_type) {
-          console.error("Pix config fetch error:", pixErr);
-          toast.error("Não foi possível gerar o pagamento Pix. Tente outra forma de pagamento.");
-          setSubmitting(false);
-          return;
-        }
-        const cfg = pixCfg[0];
-        pixKeyForDisplay = cfg.pix_key;
-        pixCopyPaste = generatePixPayload({
-          key: cfg.pix_key!,
-          keyType: cfg.pix_key_type as "cpf" | "cnpj" | "email" | "phone" | "random",
-          recipientName: cfg.pix_recipient_name ?? restaurant!.name,
-          city: cfg.pix_city ?? "BRASIL",
-          amount: cartTotal,
-          txid: orderId.replace(/-/g, "").slice(0, 25),
-          description: `${restaurant!.name} ${orderMode === "delivery" ? "DELIVERY" : "MESA"}`,
-        });
-      }
-
-      const { error: orderError } = await supabase.from("orders").insert({
-        id: orderId,
-        ...orderPayload,
-        payment_status: paymentMethod === "pix" ? "awaiting_pix" : "pending",
-        pix_copy_paste: pixCopyPaste,
-      } as never);
-
-      if (orderError) {
-        console.error("Order insert error:", orderError);
+      if (error || !data || (data as any).error) {
+        console.error("Order error:", error, data);
         toast.error("Erro ao enviar pedido. Tente novamente.");
         setSubmitting(false);
         return;
       }
 
-      const items = cart.map(c => ({
-        order_id: orderId,
-        product_id: c.product.id,
-        product_name: c.product.name,
-        quantity: c.quantity,
-        price: effectivePrice(c.product),
-      }));
+      const result = data as { order_id: string; total: number; pix_copy_paste: string | null; pix_key: string | null };
 
-      const { error: itemsError } = await supabase.from("order_items").insert(items);
-      if (itemsError) {
-        console.error("Items insert error:", itemsError);
-        toast.error("Erro ao salvar itens do pedido. Tente novamente.");
-        setSubmitting(false);
-        return;
-      }
-
-      if (paymentMethod === "pix" && pixCopyPaste && pixKeyForDisplay) {
-        setPixPayment({ copyPaste: pixCopyPaste, key: pixKeyForDisplay, amount: cartTotal, orderId });
+      if (paymentMethod === "pix" && result.pix_copy_paste && result.pix_key) {
+        setPixPayment({ copyPaste: result.pix_copy_paste, key: result.pix_key, amount: result.total, orderId: result.order_id });
         resetCheckoutState();
         toast.success("Pedido enviado! Agora finalize o pagamento via Pix.");
         return;
