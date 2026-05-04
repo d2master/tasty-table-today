@@ -172,6 +172,7 @@ export default function Dashboard() {
       pix_recipient_name: (restaurant as any).pix_recipient_name ?? "",
       pix_city: (restaurant as any).pix_city ?? "",
     });
+    setTableCountInput(String((restaurant as any).table_count ?? 0));
   }, [restaurant]);
 
   if (authLoading || restLoading) {
