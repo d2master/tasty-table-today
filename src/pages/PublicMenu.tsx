@@ -337,12 +337,34 @@ export default function PublicMenu() {
 
       if (error || !data || (data as any).error) {
         console.error("Order error:", error, data);
-        toast.error("Erro ao enviar pedido. Tente novamente.");
+        const errMsg = (data as any)?.error || (error as any)?.message || "";
+        if (typeof errMsg === "string" && errMsg.toLowerCase().includes("table already occupied")) {
+          toast.error("Esta mesa acabou de ser ocupada. Escolha outra.");
+          loadTables();
+        } else if (typeof errMsg === "string" && errMsg.toLowerCase().includes("invalid table")) {
+          toast.error("Mesa inválida. Atualize a lista e escolha uma disponível.");
+          loadTables();
+        } else {
+          toast.error("Erro ao enviar pedido. Tente novamente.");
+        }
         setSubmitting(false);
         return;
       }
 
       const result = data as { order_id: string; total: number; pix_copy_paste: string | null; pix_key: string | null };
+
+      // Save active order to localStorage so the customer can track it
+      const activeRef: ActiveOrderRef = {
+        order_id: result.order_id,
+        table_number: orderMode === "table" ? tableNumber.trim() : "",
+        order_type: orderMode,
+        created_at: new Date().toISOString(),
+      };
+      try {
+        if (slug) localStorage.setItem(`active_order_${slug}`, JSON.stringify(activeRef));
+      } catch { /* ignore */ }
+      setActiveOrder(activeRef);
+      setShowTracker(true);
 
       if (paymentMethod === "pix" && result.pix_copy_paste && result.pix_key) {
         setPixPayment({ copyPaste: result.pix_copy_paste, key: result.pix_key, amount: result.total, orderId: result.order_id });
