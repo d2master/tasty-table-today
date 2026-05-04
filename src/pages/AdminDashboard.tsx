@@ -59,10 +59,9 @@ export default function AdminDashboard() {
   };
 
   const toggleBlock = async (r: AdminRestaurant) => {
-    const { error } = await supabase
-      .from("restaurants")
-      .update({ is_blocked: !r.is_blocked })
-      .eq("id", r.id);
+    const { error } = await supabase.functions.invoke("admin-toggle-block", {
+      body: { restaurant_id: r.id, is_blocked: !r.is_blocked },
+    });
     if (error) {
       toast.error("Erro ao alterar status");
       return;
