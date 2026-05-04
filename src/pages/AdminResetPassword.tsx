@@ -30,7 +30,8 @@ export default function AdminResetPassword() {
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
-      toast.error(error.message);
+      console.error(error);
+      toast.error("Não foi possível redefinir a senha. Solicite um novo link.");
       setLoading(false);
       return;
     }

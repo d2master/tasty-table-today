@@ -18,7 +18,8 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
-      toast.error(error.message);
+      console.error(error);
+      toast.error("Email ou senha inválidos. Tente novamente.");
     } else {
       navigate("/dashboard");
     }

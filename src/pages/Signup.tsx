@@ -39,7 +39,8 @@ export default function SignupPage() {
     });
 
     if (authError) {
-      toast.error(authError.message);
+      console.error(authError);
+      toast.error("Não foi possível criar sua conta. Verifique os dados e tente novamente.");
       setLoading(false);
       return;
     }
@@ -55,7 +56,8 @@ export default function SignupPage() {
       });
 
       if (restaurantError) {
-        toast.error("Erro ao criar lanchonete: " + restaurantError.message);
+        console.error(restaurantError);
+        toast.error("Não foi possível criar sua lanchonete. Tente novamente.");
         setLoading(false);
         return;
       }
