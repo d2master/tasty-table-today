@@ -22,7 +22,7 @@ export function useRestaurant() {
       if (!user) return null;
       const { data: base, error } = await supabase
         .from("restaurants")
-        .select("id, name, slug, description, logo_url, is_blocked, pix_enabled, pix_recipient_name, pix_city, created_at, updated_at, owner_id")
+        .select("id, name, slug, description, logo_url, is_blocked, table_count, pix_enabled, pix_recipient_name, pix_city, created_at, updated_at, owner_id")
         .eq("owner_id", user.id)
         .maybeSingle();
       if (error) throw error;
@@ -40,6 +40,17 @@ export function useRestaurant() {
       };
     },
     enabled: !!user,
+  });
+
+  const updateTableCount = useMutation({
+    mutationFn: async (count: number) => {
+      const { error } = await supabase
+        .from("restaurants")
+        .update({ table_count: count })
+        .eq("id", restaurantQuery.data!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["restaurant"] }),
   });
 
   const createRestaurant = useMutation({
