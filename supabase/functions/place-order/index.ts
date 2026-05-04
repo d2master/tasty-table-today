@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     // Fetch restaurant
     const { data: restaurant, error: rErr } = await supabase
       .from("restaurants")
-      .select("id, name, slug, is_blocked, pix_enabled, pix_key, pix_key_type, pix_recipient_name, pix_city")
+      .select("id, name, slug, is_blocked, table_count, pix_enabled, pix_key, pix_key_type, pix_recipient_name, pix_city")
       .eq("slug", body.slug)
       .maybeSingle();
 
@@ -116,10 +116,34 @@ Deno.serve(async (req) => {
     const total = computedItems.reduce((s, i) => s + i.price * i.quantity, 0);
 
     // Validate order type-specific fields
-    if (body.order_type === "table" && !body.table_number) {
-      return new Response(JSON.stringify({ error: "Table number required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (body.order_type === "table") {
+      if (!body.table_number) {
+        return new Response(JSON.stringify({ error: "Table number required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const tableNum = parseInt(body.table_number, 10);
+      const maxTables = (restaurant as { table_count?: number }).table_count ?? 0;
+      if (!Number.isInteger(tableNum) || tableNum < 1 || tableNum > maxTables) {
+        return new Response(JSON.stringify({ error: "Invalid table number" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Check occupancy: any active (non-deleted) order for this table in pending/preparing
+      const { data: occupying } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("restaurant_id", restaurant.id)
+        .eq("order_type", "table")
+        .eq("table_number", body.table_number)
+        .is("deleted_at", null)
+        .in("status", ["pending", "preparing"])
+        .limit(1);
+      if (occupying && occupying.length > 0) {
+        return new Response(JSON.stringify({ error: "Table already occupied" }), {
+          status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
     if (body.order_type === "delivery") {
       if (!body.customer_name || !body.customer_phone || !body.payment_method) {

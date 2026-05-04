@@ -16,13 +16,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw } from "lucide-react";
+import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw, Armchair } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import type { OrderItem } from "@/hooks/useOrders";
 import { z } from "zod";
 
-type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "pix";
+type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "pix" | "tables";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendente", color: "bg-warning text-warning-foreground" },
@@ -64,7 +64,7 @@ const pixSchema = z.object({
 export default function Dashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
-  const { restaurant, isLoading: restLoading, updateTrashPassword, updatePixSettings, setPixPassword } = useRestaurant();
+  const { restaurant, isLoading: restLoading, updateTrashPassword, updatePixSettings, setPixPassword, updateTableCount } = useRestaurant();
   const { categories, createCategory, updateCategory, deleteCategory } = useCategories(restaurant?.id);
   const { products, createProduct, updateProduct, deleteProduct } = useProducts(restaurant?.id);
   const { orders, trashOrders, updateOrderStatus, softDeleteOrder, restoreOrder, markOrderAsPaid, getOrderItems } = useOrders(restaurant?.id);
@@ -119,6 +119,10 @@ export default function Dashboard() {
     pix_city: "",
   });
 
+  // Tables config
+  const [tableCountInput, setTableCountInput] = useState("");
+  const [savingTableCount, setSavingTableCount] = useState(false);
+
   // Track order count for new-order sound
   const prevOrderCountRef = useRef<number | null>(null);
 
@@ -168,6 +172,7 @@ export default function Dashboard() {
       pix_recipient_name: (restaurant as any).pix_recipient_name ?? "",
       pix_city: (restaurant as any).pix_city ?? "",
     });
+    setTableCountInput(String((restaurant as any).table_count ?? 0));
   }, [restaurant]);
 
   if (authLoading || restLoading) {
@@ -355,6 +360,23 @@ export default function Dashboard() {
       setResetStep("verify");
     } catch {
       toast.error("Erro ao redefinir senha.");
+    }
+  };
+
+  const handleSaveTableCount = async () => {
+    const n = parseInt(tableCountInput, 10);
+    if (!Number.isInteger(n) || n < 0 || n > 500) {
+      toast.error("Informe um número entre 0 e 500.");
+      return;
+    }
+    setSavingTableCount(true);
+    try {
+      await updateTableCount.mutateAsync(n);
+      toast.success("Quantidade de mesas atualizada!");
+    } catch {
+      toast.error("Erro ao salvar quantidade de mesas.");
+    } finally {
+      setSavingTableCount(false);
     }
   };
 
@@ -648,6 +670,7 @@ export default function Dashboard() {
     { id: "orders" as Tab, label: "Pedidos do dia", icon: ShoppingBag, count: todayOrders.filter(o => o.status === "pending").length },
     { id: "orders-old" as Tab, label: "Pedidos anteriores", icon: ShoppingBag, count: olderOrders.length || undefined },
     { id: "trash" as Tab, label: "Lixeira", icon: Trash2, count: validTrashOrders.length || undefined },
+    { id: "tables" as Tab, label: "Mesas", icon: Armchair },
     { id: "pix" as Tab, label: "Pix", icon: QrCode },
     { id: "products" as Tab, label: "Produtos", icon: Package },
     { id: "categories" as Tab, label: "Categorias", icon: FolderOpen },
@@ -839,6 +862,43 @@ export default function Dashboard() {
               <Button onClick={handleSavePixSettings} disabled={updatePixSettings.isPending}>
                 {updatePixSettings.isPending ? "Salvando..." : "Salvar configuração Pix"}
               </Button>
+            </div>
+          </div>
+        )}
+
+        {/* TABLES TAB */}
+        {activeTab === "tables" && (
+          <div className="space-y-4 max-w-xl">
+            <div className="space-y-1">
+              <h2 className="font-display text-xl font-bold">Mesas do salão</h2>
+              <p className="text-sm text-muted-foreground">
+                Defina quantas mesas existem no seu local. As mesas serão numeradas de <strong>1</strong> até a quantidade informada.
+                No cardápio, o cliente só poderá escolher mesas que não estão ocupadas.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Uma mesa só fica disponível novamente quando você marcar o pedido como <strong>Finalizado</strong> ou <strong>Cancelado</strong> aqui no dashboard.
+              </p>
+            </div>
+
+            <div className="rounded-xl border bg-card p-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="table-count">Quantidade de mesas</Label>
+                <Input
+                  id="table-count"
+                  type="number"
+                  min={0}
+                  max={500}
+                  value={tableCountInput}
+                  onChange={e => setTableCountInput(e.target.value.replace(/\D/g, ""))}
+                  placeholder="Ex: 12"
+                />
+              </div>
+              <Button onClick={handleSaveTableCount} disabled={savingTableCount}>
+                {savingTableCount ? "Salvando..." : "Salvar quantidade"}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Atualmente configurado: <strong>{(restaurant as any).table_count ?? 0}</strong> mesa(s).
+              </p>
             </div>
           </div>
         )}

@@ -1,151 +1,109 @@
+## Objetivo
 
-Implementar pagamento Pix no fechamento do pedido com QR Code e “copia e cola” gerados a partir de uma chave Pix fixa da lanchonete, mantendo a experiência alinhada ao design atual.
+1. A lanchonete define **quantas mesas** existem no local.
+2. No cardápio público, o cliente **só seleciona mesas disponíveis** (não pode digitar número livre).
+3. O cliente **acompanha o status do seu pedido** dentro do cardápio em tempo real.
+4. Uma mesa fica **ocupada** enquanto houver pedido ativo, e só é liberada quando a lanchonete **finaliza** (status `done` ou `cancelled`) — o cliente NÃO finaliza.
 
-### O que será entregue
-- No dashboard da lanchonete: configuração da chave Pix da loja.
-- No checkout do cliente: quando selecionar **Pix**, após criar o pedido o sistema mostra:
-  - QR Code Pix com o valor exato do pedido
-  - código “copia e cola”
-  - chave Pix da lanchonete
-  - valor do pedido em destaque
-- No dashboard: o pedido passa a exibir status de pagamento para o dono acompanhar.
-- Confirmação de pagamento: como a opção escolhida foi **chave Pix fixa**, a confirmação não poderá ser automática pelo banco. O fluxo seguro será **manual pelo dono da lanchonete**.
+---
 
-### 1. Banco de dados
-Criar uma migration para adicionar dados de Pix por lanchonete e status de pagamento por pedido.
+## Mudanças no banco
 
-**Tabela `restaurants`**
-Adicionar colunas:
-- `pix_enabled` boolean default false
-- `pix_key` text nullable
-- `pix_key_type` text nullable (`cpf`, `cnpj`, `email`, `phone`, `random`)
-- `pix_recipient_name` text nullable
-- `pix_city` text nullable
+**Nova coluna em `restaurants`:**
+- `table_count integer NOT NULL DEFAULT 0` — quantidade total de mesas configuradas pela lanchonete.
 
-**Tabela `orders`**
-Adicionar colunas:
-- `payment_status` text default `'pending'` (`pending`, `awaiting_pix`, `paid`, `failed`)
-- `pix_copy_paste` text nullable
-- `pix_paid_at` timestamptz nullable
+**Função pública `get_available_tables(_slug text)`** (SECURITY DEFINER, executável por anon):
+- Retorna a lista de números de mesa de 1 até `table_count` com flag `is_occupied`.
+- Uma mesa é considerada ocupada se existe um pedido com `order_type='table'`, `deleted_at IS NULL` e `status IN ('pending','preparing')` para aquela mesa.
 
-Também adicionar constraints simples de domínio para os enums textuais.
+**Função pública `get_order_status(_order_id uuid)`** (SECURITY DEFINER, anon):
+- Retorna `{ status, payment_status, created_at, updated_at, table_number }` para que o cliente acompanhe sem expor dados sensíveis de outros pedidos. Apenas a linha do `_order_id` informado.
 
-### 2. Dashboard da lanchonete
-Adicionar uma área de configuração Pix no dashboard, usando inputs nativos e visual consistente com o painel atual:
-- toggle “Aceitar Pix”
-- tipo da chave
-- chave Pix
-- nome do recebedor
-- cidade
+**Realtime:** `orders` já está em uso via realtime para o dashboard. Não exporemos realtime para anon — o cliente fará polling leve a cada 5s via `get_order_status` (mais seguro, sem precisar abrir RLS de SELECT em `orders` para anon).
 
-Validações:
-- nome do recebedor obrigatório quando Pix estiver ativo
-- cidade obrigatória quando Pix estiver ativo
-- chave obrigatória quando Pix estiver ativo
-- validação por tipo de chave com zod
+**Edge function `place-order`:** validar que, para `order_type='table'`, o `table_number` enviado:
+- é um inteiro entre 1 e `restaurants.table_count`;
+- a mesa não está ocupada por outro pedido ativo.
+Se ocupada → retorna 409 com mensagem clara.
 
-Salvar isso na própria lanchonete para que cada restaurante tenha sua configuração independente.
+---
 
-### 3. Checkout do cliente
-Aproveitar o fluxo já existente em `PublicMenu.tsx`, onde `payment_method` já possui a opção `pix`.
+## Mudanças na lanchonete (Dashboard)
 
-Novo comportamento:
-- cliente monta o pedido normalmente
-- seleciona **Delivery** ou **Mesa**
-- escolhe **Pix**
-- ao clicar em “Finalizar Pedido”, o pedido é criado
-- se a lanchonete tiver Pix ativo e configurado:
-  - gerar payload Pix com valor do pedido
-  - salvar o payload em `orders.pix_copy_paste`
-  - abrir uma etapa/modal de pagamento mostrando QR Code + código
-  - atualizar `payment_status` para `awaiting_pix`
-- se a lanchonete não tiver Pix configurado:
-  - bloquear a finalização em Pix com mensagem clara
-  - manter as demais formas de pagamento funcionando
+**Aba "Configurações" (ou seção no topo da aba Pedidos):**
+- Campo "Quantidade de mesas no local" + botão Salvar (atualiza `restaurants.table_count`).
+- Texto explicativo: "As mesas serão numeradas de 1 a N. Uma mesa só fica disponível para novo pedido após você marcar o pedido atual como Finalizado."
 
-### 4. Geração do QR Code Pix
-Usar o `QRCodeSVG` já presente no projeto para renderizar o QR.
+**Aba Pedidos:**
+- Já existe botão para mudar status para "Finalizado". Manteremos. Reforço visual: pedidos `pending`/`preparing` mostram badge "Mesa X ocupada".
+- O botão **"Mover para lixeira"** continuará disponível, mas só liberará a mesa quando o status for `done` ou `cancelled` (lixeira por si só também libera, pois `deleted_at` deixa de ser NULL — ajustaremos a query de ocupação para considerar `deleted_at IS NULL` apenas como filtro de existência; um pedido na lixeira não ocupa).
 
-Gerar no front um payload Pix EMV/BR Code com:
-- chave Pix da lanchonete
-- nome do recebedor
-- cidade
-- valor do pedido
-- identificador do pedido
+---
 
-Também exibir:
-- botão “Copiar código Pix”
-- chave Pix em texto
-- valor total
+## Mudanças no Cardápio Público (PublicMenu)
 
-### 5. Confirmação de pagamento
-Como foi definido **chave Pix fixa** e não integração com provedor/banco:
-- não haverá confirmação automática real do pagamento
-- o dono da lanchonete confirmará manualmente no dashboard
+**Seleção de mesa:**
+- Substituir o `Input` livre de número de mesa por um **grid de botões** com as mesas 1..N.
+- Mesas ocupadas aparecem desabilitadas com badge "Ocupada".
+- Carrega via `supabase.rpc('get_available_tables', { _slug })` no mount e refaz polling a cada 10s enquanto o carrinho está aberto.
+- Se `table_count = 0`, exibe aviso: "A lanchonete ainda não configurou mesas. Faça pedido por delivery."
 
-No dashboard, para pedidos com `payment_method = 'pix'`:
-- mostrar badge de pagamento:
-  - “Aguardando Pix”
-  - “Pago”
-- adicionar botão “Marcar como pago”
-- ao marcar como pago, preencher `payment_status = 'paid'` e `pix_paid_at = now()`
+**Acompanhamento do pedido:**
+- Após `place-order` retornar sucesso, salvar `order_id` em `localStorage` (chave `active_order_<slug>`) junto com `table_number`.
+- Adicionar componente `OrderTracker` fixo (rodapé/topo) que aparece sempre que existir pedido ativo no localStorage.
+- Polling a cada 5s em `get_order_status`. Mostra timeline:
+  - Pendente → Em preparo → Finalizado
+  - Quando status == `done` ou `cancelled`: mostra mensagem final ("Pedido finalizado pela lanchonete — obrigado!" / "Pedido cancelado") e oferece botão "Fechar acompanhamento" que limpa o localStorage.
+- O cliente **não** tem botão para finalizar — apenas a lanchonete.
 
-Opcionalmente, o status operacional do pedido continua separado do status financeiro:
-- pedido: `pending`, `preparing`, `done`, `cancelled`
-- pagamento: `awaiting_pix`, `paid`
+---
 
-Isso evita misturar preparo com financeiro.
+## Segurança
 
-### 6. Ajustes visuais
-Sem fugir do padrão atual:
-- cartão de pagamento Pix com borda/sombra suave
-- QR Code dentro de card claro
-- valor em destaque com tipografia já usada no projeto
-- badge discreta “Pix” e “Aguardando pagamento”
-- manter componentes nativos, sem Select com Portal
+- Novas funções `get_available_tables` e `get_order_status` são `SECURITY DEFINER`, retornam apenas o estritamente necessário e não expõem dados de outros pedidos / clientes.
+- `GRANT EXECUTE ... TO anon, authenticated` em ambas.
+- RLS de `orders` continua restrita a donos — o anon só vê via RPC pelo `order_id` que ele próprio possui.
+- `place-order` valida atomicamente a ocupação da mesa antes de inserir, evitando colisão.
+- Atualização do `@security-memory` listando as duas novas funções públicas e o motivo (UX de mesas e tracking de pedido).
 
-### 7. Arquivos que serão ajustados
-- `src/pages/PublicMenu.tsx`
-  - etapa de pagamento Pix após finalizar pedido
-  - QR Code, cópia do código e mensagens
-- `src/pages/Dashboard.tsx`
-  - configuração Pix da lanchonete
-  - badge/status e ação “Marcar como pago”
-- `src/hooks/useOrders.ts`
-  - ampliar tipo `Order` com `payment_status`, `pix_copy_paste`, `pix_paid_at`
-  - mutation para marcar pagamento
-- `src/hooks/useRestaurant.ts`
-  - mutation para salvar configuração Pix
-- `src/integrations/supabase/types.ts`
-  - refletirá as novas colunas automaticamente após a migration
-- nova migration em `supabase/migrations/...`
+---
 
-### 8. Regras importantes
-- Não usar `.select()` após insert do pedido público.
-- Continuar gerando o UUID do pedido no client.
-- Validar entradas no front com zod.
-- Manter a UI sem componentes com Portal.
-- Não prometer “pagamento confirmado automaticamente”, porque isso só seria possível com integração real com banco/provedor Pix.
+## Detalhes técnicos
 
-### Detalhes técnicos
-```text
-Fluxo Pix com chave fixa
+**Migration SQL (resumo):**
+```sql
+ALTER TABLE public.restaurants
+  ADD COLUMN IF NOT EXISTS table_count integer NOT NULL DEFAULT 0;
 
-Cliente fecha pedido
-  -> pedido é criado
-  -> payment_method = pix
-  -> payment_status = awaiting_pix
-  -> sistema gera BR Code com valor do pedido
-  -> cliente vê QR Code + copia e cola
-  -> dono confere recebimento no banco
-  -> dono marca "Pago" no dashboard
-  -> payment_status = paid
+CREATE OR REPLACE FUNCTION public.get_available_tables(_slug text)
+RETURNS TABLE(table_number integer, is_occupied boolean)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+  WITH r AS (SELECT id, table_count FROM restaurants WHERE slug = _slug LIMIT 1),
+  occ AS (
+    SELECT DISTINCT o.table_number
+    FROM orders o JOIN r ON o.restaurant_id = r.id
+    WHERE o.order_type = 'table'
+      AND o.deleted_at IS NULL
+      AND o.status IN ('pending','preparing')
+  )
+  SELECT gs::int, EXISTS(SELECT 1 FROM occ WHERE occ.table_number = gs::text)
+  FROM r, generate_series(1, r.table_count) gs;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_order_status(_order_id uuid)
+RETURNS TABLE(status text, payment_status text, table_number text, created_at timestamptz, updated_at timestamptz)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+  SELECT status, payment_status, table_number, created_at, updated_at
+  FROM orders WHERE id = _order_id LIMIT 1;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_available_tables(text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_order_status(uuid) TO anon, authenticated;
 ```
 
-### Limitação desta abordagem
-Com **chave Pix fixa**, o sistema consegue:
-- gerar QR Code com valor
-- mostrar chave e código copia-e-cola
-- organizar o pedido com status financeiro
-
-Mas **não consegue validar sozinho se o dinheiro caiu**. Para confirmação automática de verdade, depois será necessário integrar um provedor Pix/API bancária.
+**Arquivos a alterar:**
+- `supabase/migrations/<novo>.sql` — alterações acima.
+- `supabase/functions/place-order/index.ts` — validar mesa contra `table_count` + ocupação.
+- `src/pages/Dashboard.tsx` — campo "Quantidade de mesas" + salvar via update em `restaurants` (RLS de owner já cobre).
+- `src/pages/PublicMenu.tsx` — grid de mesas + componente `OrderTracker` com polling + persistência no localStorage.
+- `src/hooks/useRestaurant.ts` — incluir `table_count` no select e mutation `updateTableCount`.

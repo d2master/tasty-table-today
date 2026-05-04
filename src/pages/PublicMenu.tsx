@@ -24,11 +24,33 @@ interface Restaurant {
   slug: string;
   description: string | null;
   is_blocked?: boolean;
+  table_count?: number;
   pix_enabled?: boolean;
   pix_key?: string | null;
   pix_key_type?: "cpf" | "cnpj" | "email" | "phone" | "random" | null;
   pix_recipient_name?: string | null;
   pix_city?: string | null;
+}
+
+interface TableInfo {
+  table_number: number;
+  is_occupied: boolean;
+}
+
+interface ActiveOrderRef {
+  order_id: string;
+  table_number: string;
+  order_type: "table" | "delivery";
+  created_at: string;
+}
+
+interface OrderStatus {
+  status: string;
+  payment_status: string;
+  table_number: string;
+  order_type: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Category {
@@ -82,6 +104,15 @@ export default function PublicMenu() {
   const [deliveryMapsUrl, setDeliveryMapsUrl] = useState("");
   const [pixPayment, setPixPayment] = useState<{ copyPaste: string; key: string; amount: number; orderId: string } | null>(null);
 
+  // Tables state
+  const [tables, setTables] = useState<TableInfo[]>([]);
+  const [loadingTables, setLoadingTables] = useState(false);
+
+  // Active order tracking
+  const [activeOrder, setActiveOrder] = useState<ActiveOrderRef | null>(null);
+  const [orderStatus, setOrderStatus] = useState<OrderStatus | null>(null);
+  const [showTracker, setShowTracker] = useState(false);
+
   const resetCheckoutState = () => {
     setCart([]);
     setShowCart(false);
@@ -99,7 +130,7 @@ export default function PublicMenu() {
     (async () => {
       const { data: rest } = await supabase
         .from("restaurants")
-        .select("id, name, slug, description, is_blocked, pix_enabled, pix_recipient_name, pix_city, logo_url")
+        .select("id, name, slug, description, is_blocked, table_count, pix_enabled, pix_recipient_name, pix_city, logo_url")
         .eq("slug", slug)
         .maybeSingle();
       if (!rest) { setNotFound(true); setLoading(false); return; }
@@ -109,6 +140,7 @@ export default function PublicMenu() {
         slug: rest.slug,
         description: rest.description,
         is_blocked: rest.is_blocked,
+        table_count: (rest as { table_count?: number }).table_count ?? 0,
         pix_enabled: rest.pix_enabled,
         pix_key: null,
         pix_key_type: null,
@@ -128,6 +160,73 @@ export default function PublicMenu() {
       setLoading(false);
     })();
   }, [slug]);
+
+  // Load active order from localStorage
+  useEffect(() => {
+    if (!slug) return;
+    try {
+      const raw = localStorage.getItem(`active_order_${slug}`);
+      if (raw) {
+        const parsed = JSON.parse(raw) as ActiveOrderRef;
+        setActiveOrder(parsed);
+      }
+    } catch { /* ignore */ }
+  }, [slug]);
+
+  // Fetch available tables (called on mount, when cart opens, and on interval)
+  const loadTables = async () => {
+    if (!slug || !restaurant?.table_count) return;
+    setLoadingTables(true);
+    try {
+      const { data, error } = await supabase.rpc("get_available_tables", { _slug: slug });
+      if (!error && Array.isArray(data)) {
+        setTables(data as TableInfo[]);
+      }
+    } finally {
+      setLoadingTables(false);
+    }
+  };
+
+  useEffect(() => {
+    if (restaurant?.table_count) loadTables();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurant?.table_count, slug]);
+
+  // Refresh tables every 10s while cart is open in table mode
+  useEffect(() => {
+    if (!showCart || orderMode !== "table" || !restaurant?.table_count) return;
+    loadTables();
+    const interval = setInterval(loadTables, 10000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCart, orderMode, restaurant?.table_count]);
+
+  // Poll order status every 5s while there's an active order
+  useEffect(() => {
+    if (!activeOrder) {
+      setOrderStatus(null);
+      return;
+    }
+    let cancelled = false;
+    const fetchStatus = async () => {
+      const { data, error } = await supabase.rpc("get_order_status", { _order_id: activeOrder.order_id });
+      if (cancelled) return;
+      if (!error && Array.isArray(data) && data.length > 0) {
+        setOrderStatus(data[0] as OrderStatus);
+      }
+    };
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 5000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [activeOrder]);
+
+  const clearActiveOrder = () => {
+    if (slug) localStorage.removeItem(`active_order_${slug}`);
+    setActiveOrder(null);
+    setOrderStatus(null);
+    setShowTracker(false);
+  };
+
 
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -238,12 +337,34 @@ export default function PublicMenu() {
 
       if (error || !data || (data as any).error) {
         console.error("Order error:", error, data);
-        toast.error("Erro ao enviar pedido. Tente novamente.");
+        const errMsg = (data as any)?.error || (error as any)?.message || "";
+        if (typeof errMsg === "string" && errMsg.toLowerCase().includes("table already occupied")) {
+          toast.error("Esta mesa acabou de ser ocupada. Escolha outra.");
+          loadTables();
+        } else if (typeof errMsg === "string" && errMsg.toLowerCase().includes("invalid table")) {
+          toast.error("Mesa inválida. Atualize a lista e escolha uma disponível.");
+          loadTables();
+        } else {
+          toast.error("Erro ao enviar pedido. Tente novamente.");
+        }
         setSubmitting(false);
         return;
       }
 
       const result = data as { order_id: string; total: number; pix_copy_paste: string | null; pix_key: string | null };
+
+      // Save active order to localStorage so the customer can track it
+      const activeRef: ActiveOrderRef = {
+        order_id: result.order_id,
+        table_number: orderMode === "table" ? tableNumber.trim() : "",
+        order_type: orderMode,
+        created_at: new Date().toISOString(),
+      };
+      try {
+        if (slug) localStorage.setItem(`active_order_${slug}`, JSON.stringify(activeRef));
+      } catch { /* ignore */ }
+      setActiveOrder(activeRef);
+      setShowTracker(true);
 
       if (paymentMethod === "pix" && result.pix_copy_paste && result.pix_key) {
         setPixPayment({ copyPaste: result.pix_copy_paste, key: result.pix_key, amount: result.total, orderId: result.order_id });
@@ -374,15 +495,124 @@ export default function PublicMenu() {
         {filteredProducts.length === 0 && <p className="text-center text-muted-foreground py-12">Nenhum produto nesta categoria.</p>}
       </main>
 
+      {/* Active order pill (top-right floating) */}
+      {activeOrder && !showTracker && (
+        <button
+          type="button"
+          onClick={() => setShowTracker(true)}
+          className="fixed top-3 right-3 z-50 flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-3 py-2 text-xs font-semibold shadow-lg hover:opacity-90 transition"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-foreground" />
+          </span>
+          Acompanhar pedido
+        </button>
+      )}
+
       {/* Cart FAB */}
       {cartCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-card border-t shadow-lg z-50">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-card border-t shadow-lg z-40">
           <Button className="w-full gap-2" size="lg" onClick={() => setShowCart(true)}>
             <ShoppingCart className="h-5 w-5" />
             Ver Carrinho ({cartCount}) — R$ {cartTotal.toFixed(2)}
           </Button>
         </div>
       )}
+
+      {/* Order Tracker Drawer */}
+      <AnimatePresence>
+        {showTracker && activeOrder && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-end justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="absolute inset-0 bg-foreground/40" onClick={() => setShowTracker(false)} />
+            <motion.div
+              className="relative w-full max-w-lg bg-card rounded-t-2xl p-6 space-y-5 max-h-[85vh] overflow-y-auto"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25 }}
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-xl font-bold">Seu pedido</h2>
+                <Button variant="ghost" size="sm" onClick={() => setShowTracker(false)}><X className="h-5 w-5" /></Button>
+              </div>
+
+              <div className="text-sm text-muted-foreground">
+                Pedido <span className="font-mono font-semibold text-foreground">#{activeOrder.order_id.slice(0, 8).toUpperCase()}</span>
+                {activeOrder.order_type === "table" && activeOrder.table_number && (
+                  <> · Mesa <span className="font-semibold text-foreground">{activeOrder.table_number}</span></>
+                )}
+              </div>
+
+              {(() => {
+                const status = orderStatus?.status ?? "pending";
+                const steps = [
+                  { key: "pending", label: "Pendente", desc: "Aguardando a lanchonete aceitar" },
+                  { key: "preparing", label: "Em preparo", desc: "A lanchonete está preparando" },
+                  { key: "done", label: "Finalizado", desc: "Pedido pronto / entregue" },
+                ];
+                const order = ["pending", "preparing", "done"];
+                const currentIdx = order.indexOf(status);
+                const isCancelled = status === "cancelled";
+
+                return (
+                  <div className="space-y-3">
+                    {isCancelled ? (
+                      <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-center space-y-1">
+                        <p className="font-semibold text-destructive">Pedido cancelado</p>
+                        <p className="text-sm text-muted-foreground">A lanchonete cancelou este pedido.</p>
+                      </div>
+                    ) : (
+                      <ol className="space-y-3">
+                        {steps.map((s, idx) => {
+                          const reached = currentIdx >= idx;
+                          const isCurrent = currentIdx === idx;
+                          return (
+                            <li key={s.key} className="flex items-start gap-3">
+                              <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                                reached ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+                              } ${isCurrent ? "ring-2 ring-primary/30 animate-pulse" : ""}`}>
+                                {idx + 1}
+                              </div>
+                              <div className="flex-1">
+                                <p className={`font-semibold ${reached ? "" : "text-muted-foreground"}`}>{s.label}</p>
+                                <p className="text-xs text-muted-foreground">{s.desc}</p>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    )}
+
+                    {status === "done" && (
+                      <div className="rounded-lg bg-success/10 border border-success/30 p-3 text-center text-sm">
+                        ✅ A lanchonete finalizou seu pedido. Obrigado!
+                      </div>
+                    )}
+
+                    {(status === "done" || status === "cancelled") && (
+                      <Button variant="outline" className="w-full" onClick={clearActiveOrder}>
+                        Fechar acompanhamento
+                      </Button>
+                    )}
+
+                    {status !== "done" && status !== "cancelled" && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        Atualizando automaticamente. Apenas a lanchonete pode finalizar o pedido.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Cart Drawer */}
       <AnimatePresence>
@@ -493,9 +723,61 @@ export default function PublicMenu() {
                       <Label>Seu nome</Label>
                       <Input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="João da Silva (opcional)" maxLength={100} />
                     </div>
-                    <div className="space-y-1">
-                      <Label>Número da mesa <span className="text-destructive">*</span></Label>
-                      <Input value={tableNumber} onChange={e => setTableNumber(e.target.value)} placeholder="Ex: 5" maxLength={20} />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Selecione sua mesa <span className="text-destructive">*</span></Label>
+                        <button
+                          type="button"
+                          onClick={loadTables}
+                          className="text-xs text-primary hover:underline disabled:opacity-50"
+                          disabled={loadingTables}
+                        >
+                          {loadingTables ? "Atualizando..." : "Atualizar"}
+                        </button>
+                      </div>
+                      {!restaurant?.table_count ? (
+                        <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground text-center">
+                          A lanchonete ainda não configurou as mesas. Tente o modo Delivery ou volte mais tarde.
+                        </div>
+                      ) : tables.length === 0 ? (
+                        <div className="rounded-lg border p-3 text-sm text-muted-foreground text-center">
+                          Carregando mesas...
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-5 sm:grid-cols-6 gap-2">
+                            {tables.map(t => {
+                              const selected = tableNumber === String(t.table_number);
+                              const disabled = t.is_occupied && !selected;
+                              return (
+                                <button
+                                  key={t.table_number}
+                                  type="button"
+                                  disabled={disabled}
+                                  onClick={() => setTableNumber(String(t.table_number))}
+                                  className={`relative aspect-square rounded-lg border text-sm font-semibold transition-colors ${
+                                    selected
+                                      ? "bg-primary text-primary-foreground border-primary"
+                                      : disabled
+                                        ? "bg-muted text-muted-foreground border-input cursor-not-allowed line-through"
+                                        : "bg-card border-input hover:bg-secondary"
+                                  }`}
+                                >
+                                  {t.table_number}
+                                  {t.is_occupied && (
+                                    <span className="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold px-1 leading-none h-4">
+                                      !
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            Mesas com <span className="font-semibold text-destructive">!</span> estão ocupadas e só liberam quando a lanchonete finalizar o pedido.
+                          </p>
+                        </>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label>Observação</Label>

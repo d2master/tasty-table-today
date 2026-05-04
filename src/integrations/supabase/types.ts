@@ -283,6 +283,7 @@ export type Database = {
           pix_password: string | null
           pix_recipient_name: string | null
           slug: string
+          table_count: number
           trash_password: string | null
           updated_at: string
         }
@@ -301,6 +302,7 @@ export type Database = {
           pix_password?: string | null
           pix_recipient_name?: string | null
           slug: string
+          table_count?: number
           trash_password?: string | null
           updated_at?: string
         }
@@ -319,6 +321,7 @@ export type Database = {
           pix_password?: string | null
           pix_recipient_name?: string | null
           slug?: string
+          table_count?: number
           trash_password?: string | null
           updated_at?: string
         }
@@ -329,6 +332,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_available_tables: {
+        Args: { _slug: string }
+        Returns: {
+          is_occupied: boolean
+          table_number: number
+        }[]
+      }
       get_my_restaurant_sensitive: {
         Args: never
         Returns: {
@@ -337,6 +347,17 @@ export type Database = {
           pix_key_type: string
           pix_password: string
           trash_password: string
+        }[]
+      }
+      get_order_status: {
+        Args: { _order_id: string }
+        Returns: {
+          created_at: string
+          order_type: string
+          payment_status: string
+          status: string
+          table_number: string
+          updated_at: string
         }[]
       }
       get_restaurant_pix_for_checkout: {
