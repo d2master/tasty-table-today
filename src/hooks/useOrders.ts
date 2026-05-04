@@ -114,15 +114,9 @@ export function useOrders(restaurantId: string | undefined) {
     },
   });
 
-  const permanentDeleteOrder = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("orders").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders-trash", restaurantId] });
-    },
-  });
+  // Permanent delete is intentionally NOT exposed here.
+  // Use the `permanent_delete_order_with_password` RPC directly so the trash
+  // password is always verified server-side.
 
   const markOrderAsPaid = useMutation({
     mutationFn: async (id: string) => {
