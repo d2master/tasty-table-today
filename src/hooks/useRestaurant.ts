@@ -109,5 +109,6 @@ export function useRestaurant() {
     updateTrashPassword,
     updatePixSettings,
     setPixPassword,
+    updateTableCount,
   };
 }
