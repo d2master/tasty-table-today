@@ -148,7 +148,7 @@ export function useOrders(restaurantId: string | undefined) {
     updateOrderStatus,
     softDeleteOrder,
     restoreOrder,
-    permanentDeleteOrder,
+    
     markOrderAsPaid,
     getOrderItems,
   };
