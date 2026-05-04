@@ -1,0 +1,2 @@
+REVOKE UPDATE ON public.restaurants FROM authenticated;
+GRANT UPDATE (name, slug, description, logo_url, pix_enabled, pix_key, pix_key_type, pix_recipient_name, pix_city, pix_password, trash_password) ON public.restaurants TO authenticated;
