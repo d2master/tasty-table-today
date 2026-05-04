@@ -363,6 +363,23 @@ export default function Dashboard() {
     }
   };
 
+  const handleSaveTableCount = async () => {
+    const n = parseInt(tableCountInput, 10);
+    if (!Number.isInteger(n) || n < 0 || n > 500) {
+      toast.error("Informe um número entre 0 e 500.");
+      return;
+    }
+    setSavingTableCount(true);
+    try {
+      await updateTableCount.mutateAsync(n);
+      toast.success("Quantidade de mesas atualizada!");
+    } catch {
+      toast.error("Erro ao salvar quantidade de mesas.");
+    } finally {
+      setSavingTableCount(false);
+    }
+  };
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayOrders = orders.filter(o => new Date(o.created_at) >= today);
