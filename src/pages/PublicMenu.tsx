@@ -104,6 +104,15 @@ export default function PublicMenu() {
   const [deliveryMapsUrl, setDeliveryMapsUrl] = useState("");
   const [pixPayment, setPixPayment] = useState<{ copyPaste: string; key: string; amount: number; orderId: string } | null>(null);
 
+  // Tables state
+  const [tables, setTables] = useState<TableInfo[]>([]);
+  const [loadingTables, setLoadingTables] = useState(false);
+
+  // Active order tracking
+  const [activeOrder, setActiveOrder] = useState<ActiveOrderRef | null>(null);
+  const [orderStatus, setOrderStatus] = useState<OrderStatus | null>(null);
+  const [showTracker, setShowTracker] = useState(false);
+
   const resetCheckoutState = () => {
     setCart([]);
     setShowCart(false);
