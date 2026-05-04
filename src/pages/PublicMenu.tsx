@@ -24,11 +24,33 @@ interface Restaurant {
   slug: string;
   description: string | null;
   is_blocked?: boolean;
+  table_count?: number;
   pix_enabled?: boolean;
   pix_key?: string | null;
   pix_key_type?: "cpf" | "cnpj" | "email" | "phone" | "random" | null;
   pix_recipient_name?: string | null;
   pix_city?: string | null;
+}
+
+interface TableInfo {
+  table_number: number;
+  is_occupied: boolean;
+}
+
+interface ActiveOrderRef {
+  order_id: string;
+  table_number: string;
+  order_type: "table" | "delivery";
+  created_at: string;
+}
+
+interface OrderStatus {
+  status: string;
+  payment_status: string;
+  table_number: string;
+  order_type: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Category {
