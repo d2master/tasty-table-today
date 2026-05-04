@@ -67,7 +67,7 @@ export default function Dashboard() {
   const { restaurant, isLoading: restLoading, updateTrashPassword, updatePixSettings, setPixPassword } = useRestaurant();
   const { categories, createCategory, updateCategory, deleteCategory } = useCategories(restaurant?.id);
   const { products, createProduct, updateProduct, deleteProduct } = useProducts(restaurant?.id);
-  const { orders, trashOrders, updateOrderStatus, softDeleteOrder, restoreOrder, permanentDeleteOrder, markOrderAsPaid, getOrderItems } = useOrders(restaurant?.id);
+  const { orders, trashOrders, updateOrderStatus, softDeleteOrder, restoreOrder, markOrderAsPaid, getOrderItems } = useOrders(restaurant?.id);
 
   const [activeTab, setActiveTab] = useState<Tab>("orders");
   const [newCatName, setNewCatName] = useState("");
