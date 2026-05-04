@@ -614,9 +614,61 @@ export default function PublicMenu() {
                       <Label>Seu nome</Label>
                       <Input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="João da Silva (opcional)" maxLength={100} />
                     </div>
-                    <div className="space-y-1">
-                      <Label>Número da mesa <span className="text-destructive">*</span></Label>
-                      <Input value={tableNumber} onChange={e => setTableNumber(e.target.value)} placeholder="Ex: 5" maxLength={20} />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Selecione sua mesa <span className="text-destructive">*</span></Label>
+                        <button
+                          type="button"
+                          onClick={loadTables}
+                          className="text-xs text-primary hover:underline disabled:opacity-50"
+                          disabled={loadingTables}
+                        >
+                          {loadingTables ? "Atualizando..." : "Atualizar"}
+                        </button>
+                      </div>
+                      {!restaurant?.table_count ? (
+                        <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground text-center">
+                          A lanchonete ainda não configurou as mesas. Tente o modo Delivery ou volte mais tarde.
+                        </div>
+                      ) : tables.length === 0 ? (
+                        <div className="rounded-lg border p-3 text-sm text-muted-foreground text-center">
+                          Carregando mesas...
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-5 sm:grid-cols-6 gap-2">
+                            {tables.map(t => {
+                              const selected = tableNumber === String(t.table_number);
+                              const disabled = t.is_occupied && !selected;
+                              return (
+                                <button
+                                  key={t.table_number}
+                                  type="button"
+                                  disabled={disabled}
+                                  onClick={() => setTableNumber(String(t.table_number))}
+                                  className={`relative aspect-square rounded-lg border text-sm font-semibold transition-colors ${
+                                    selected
+                                      ? "bg-primary text-primary-foreground border-primary"
+                                      : disabled
+                                        ? "bg-muted text-muted-foreground border-input cursor-not-allowed line-through"
+                                        : "bg-card border-input hover:bg-secondary"
+                                  }`}
+                                >
+                                  {t.table_number}
+                                  {t.is_occupied && (
+                                    <span className="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold px-1 leading-none h-4">
+                                      !
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            Mesas com <span className="font-semibold text-destructive">!</span> estão ocupadas e só liberam quando a lanchonete finalizar o pedido.
+                          </p>
+                        </>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label>Observação</Label>
