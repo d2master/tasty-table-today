@@ -10,7 +10,7 @@ import { ShoppingCart, Plus, Minus, X, Send, Tag, Utensils, Bike, MapPin, Link2,
 import { motion, AnimatePresence } from "framer-motion";
 import { z } from "zod";
 import { QRCodeSVG } from "qrcode.react";
-import { generatePixPayload } from "@/lib/pix";
+
 
 type OrderMode = "table" | "delivery";
 type PaymentMethod = "pix" | "debito" | "credito" | "dinheiro";
