@@ -495,15 +495,124 @@ export default function PublicMenu() {
         {filteredProducts.length === 0 && <p className="text-center text-muted-foreground py-12">Nenhum produto nesta categoria.</p>}
       </main>
 
+      {/* Active order pill (top-right floating) */}
+      {activeOrder && !showTracker && (
+        <button
+          type="button"
+          onClick={() => setShowTracker(true)}
+          className="fixed top-3 right-3 z-50 flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-3 py-2 text-xs font-semibold shadow-lg hover:opacity-90 transition"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-foreground" />
+          </span>
+          Acompanhar pedido
+        </button>
+      )}
+
       {/* Cart FAB */}
       {cartCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-card border-t shadow-lg z-50">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-card border-t shadow-lg z-40">
           <Button className="w-full gap-2" size="lg" onClick={() => setShowCart(true)}>
             <ShoppingCart className="h-5 w-5" />
             Ver Carrinho ({cartCount}) — R$ {cartTotal.toFixed(2)}
           </Button>
         </div>
       )}
+
+      {/* Order Tracker Drawer */}
+      <AnimatePresence>
+        {showTracker && activeOrder && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-end justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="absolute inset-0 bg-foreground/40" onClick={() => setShowTracker(false)} />
+            <motion.div
+              className="relative w-full max-w-lg bg-card rounded-t-2xl p-6 space-y-5 max-h-[85vh] overflow-y-auto"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25 }}
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-xl font-bold">Seu pedido</h2>
+                <Button variant="ghost" size="sm" onClick={() => setShowTracker(false)}><X className="h-5 w-5" /></Button>
+              </div>
+
+              <div className="text-sm text-muted-foreground">
+                Pedido <span className="font-mono font-semibold text-foreground">#{activeOrder.order_id.slice(0, 8).toUpperCase()}</span>
+                {activeOrder.order_type === "table" && activeOrder.table_number && (
+                  <> · Mesa <span className="font-semibold text-foreground">{activeOrder.table_number}</span></>
+                )}
+              </div>
+
+              {(() => {
+                const status = orderStatus?.status ?? "pending";
+                const steps = [
+                  { key: "pending", label: "Pendente", desc: "Aguardando a lanchonete aceitar" },
+                  { key: "preparing", label: "Em preparo", desc: "A lanchonete está preparando" },
+                  { key: "done", label: "Finalizado", desc: "Pedido pronto / entregue" },
+                ];
+                const order = ["pending", "preparing", "done"];
+                const currentIdx = order.indexOf(status);
+                const isCancelled = status === "cancelled";
+
+                return (
+                  <div className="space-y-3">
+                    {isCancelled ? (
+                      <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-center space-y-1">
+                        <p className="font-semibold text-destructive">Pedido cancelado</p>
+                        <p className="text-sm text-muted-foreground">A lanchonete cancelou este pedido.</p>
+                      </div>
+                    ) : (
+                      <ol className="space-y-3">
+                        {steps.map((s, idx) => {
+                          const reached = currentIdx >= idx;
+                          const isCurrent = currentIdx === idx;
+                          return (
+                            <li key={s.key} className="flex items-start gap-3">
+                              <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                                reached ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+                              } ${isCurrent ? "ring-2 ring-primary/30 animate-pulse" : ""}`}>
+                                {idx + 1}
+                              </div>
+                              <div className="flex-1">
+                                <p className={`font-semibold ${reached ? "" : "text-muted-foreground"}`}>{s.label}</p>
+                                <p className="text-xs text-muted-foreground">{s.desc}</p>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    )}
+
+                    {status === "done" && (
+                      <div className="rounded-lg bg-success/10 border border-success/30 p-3 text-center text-sm">
+                        ✅ A lanchonete finalizou seu pedido. Obrigado!
+                      </div>
+                    )}
+
+                    {(status === "done" || status === "cancelled") && (
+                      <Button variant="outline" className="w-full" onClick={clearActiveOrder}>
+                        Fechar acompanhamento
+                      </Button>
+                    )}
+
+                    {status !== "done" && status !== "cancelled" && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        Atualizando automaticamente. Apenas a lanchonete pode finalizar o pedido.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Cart Drawer */}
       <AnimatePresence>
