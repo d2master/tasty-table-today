@@ -130,7 +130,7 @@ export default function PublicMenu() {
     (async () => {
       const { data: rest } = await supabase
         .from("restaurants")
-        .select("id, name, slug, description, is_blocked, pix_enabled, pix_recipient_name, pix_city, logo_url")
+        .select("id, name, slug, description, is_blocked, table_count, pix_enabled, pix_recipient_name, pix_city, logo_url")
         .eq("slug", slug)
         .maybeSingle();
       if (!rest) { setNotFound(true); setLoading(false); return; }
@@ -140,6 +140,7 @@ export default function PublicMenu() {
         slug: rest.slug,
         description: rest.description,
         is_blocked: rest.is_blocked,
+        table_count: (rest as { table_count?: number }).table_count ?? 0,
         pix_enabled: rest.pix_enabled,
         pix_key: null,
         pix_key_type: null,
