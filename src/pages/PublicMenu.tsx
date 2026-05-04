@@ -161,6 +161,73 @@ export default function PublicMenu() {
     })();
   }, [slug]);
 
+  // Load active order from localStorage
+  useEffect(() => {
+    if (!slug) return;
+    try {
+      const raw = localStorage.getItem(`active_order_${slug}`);
+      if (raw) {
+        const parsed = JSON.parse(raw) as ActiveOrderRef;
+        setActiveOrder(parsed);
+      }
+    } catch { /* ignore */ }
+  }, [slug]);
+
+  // Fetch available tables (called on mount, when cart opens, and on interval)
+  const loadTables = async () => {
+    if (!slug || !restaurant?.table_count) return;
+    setLoadingTables(true);
+    try {
+      const { data, error } = await supabase.rpc("get_available_tables", { _slug: slug });
+      if (!error && Array.isArray(data)) {
+        setTables(data as TableInfo[]);
+      }
+    } finally {
+      setLoadingTables(false);
+    }
+  };
+
+  useEffect(() => {
+    if (restaurant?.table_count) loadTables();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurant?.table_count, slug]);
+
+  // Refresh tables every 10s while cart is open in table mode
+  useEffect(() => {
+    if (!showCart || orderMode !== "table" || !restaurant?.table_count) return;
+    loadTables();
+    const interval = setInterval(loadTables, 10000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCart, orderMode, restaurant?.table_count]);
+
+  // Poll order status every 5s while there's an active order
+  useEffect(() => {
+    if (!activeOrder) {
+      setOrderStatus(null);
+      return;
+    }
+    let cancelled = false;
+    const fetchStatus = async () => {
+      const { data, error } = await supabase.rpc("get_order_status", { _order_id: activeOrder.order_id });
+      if (cancelled) return;
+      if (!error && Array.isArray(data) && data.length > 0) {
+        setOrderStatus(data[0] as OrderStatus);
+      }
+    };
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 5000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [activeOrder]);
+
+  const clearActiveOrder = () => {
+    if (slug) localStorage.removeItem(`active_order_${slug}`);
+    setActiveOrder(null);
+    setOrderStatus(null);
+    setShowTracker(false);
+  };
+
+
   const addToCart = (product: Product) => {
     setCart(prev => {
       const existing = prev.find(c => c.product.id === product.id);
