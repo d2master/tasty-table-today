@@ -329,7 +329,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_insert_order_item: { Args: { _order_id: string }; Returns: boolean }
       get_my_restaurant_sensitive: {
         Args: never
         Returns: {
