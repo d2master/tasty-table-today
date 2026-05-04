@@ -866,6 +866,43 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* TABLES TAB */}
+        {activeTab === "tables" && (
+          <div className="space-y-4 max-w-xl">
+            <div className="space-y-1">
+              <h2 className="font-display text-xl font-bold">Mesas do salão</h2>
+              <p className="text-sm text-muted-foreground">
+                Defina quantas mesas existem no seu local. As mesas serão numeradas de <strong>1</strong> até a quantidade informada.
+                No cardápio, o cliente só poderá escolher mesas que não estão ocupadas.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Uma mesa só fica disponível novamente quando você marcar o pedido como <strong>Finalizado</strong> ou <strong>Cancelado</strong> aqui no dashboard.
+              </p>
+            </div>
+
+            <div className="rounded-xl border bg-card p-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="table-count">Quantidade de mesas</Label>
+                <Input
+                  id="table-count"
+                  type="number"
+                  min={0}
+                  max={500}
+                  value={tableCountInput}
+                  onChange={e => setTableCountInput(e.target.value.replace(/\D/g, ""))}
+                  placeholder="Ex: 12"
+                />
+              </div>
+              <Button onClick={handleSaveTableCount} disabled={savingTableCount}>
+                {savingTableCount ? "Salvando..." : "Salvar quantidade"}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Atualmente configurado: <strong>{(restaurant as any).table_count ?? 0}</strong> mesa(s).
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* CATEGORIES TAB */}
         {activeTab === "categories" && (
           <div className="space-y-4">
