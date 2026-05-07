@@ -64,7 +64,7 @@ const pixSchema = z.object({
 export default function Dashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
-  const { restaurant, isLoading: restLoading, updateTrashPassword, updatePixSettings, setPixPassword, updateTableCount } = useRestaurant();
+  const { restaurant, isLoading: restLoading, error: restError, updateTrashPassword, updatePixSettings, setPixPassword, updateTableCount } = useRestaurant();
   const { categories, createCategory, updateCategory, deleteCategory } = useCategories(restaurant?.id);
   const { products, createProduct, updateProduct, deleteProduct } = useProducts(restaurant?.id);
   const { orders, trashOrders, updateOrderStatus, softDeleteOrder, restoreOrder, markOrderAsPaid, getOrderItems } = useOrders(restaurant?.id);
@@ -180,7 +180,18 @@ export default function Dashboard() {
   }
 
   if (!restaurant) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Nenhuma lanchonete encontrada.</div>;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 gap-3">
+        <p className="text-muted-foreground">Nenhuma lanchonete encontrada.</p>
+        <p className="text-xs text-muted-foreground">user.id: {user?.id ?? "(sem usuário)"}</p>
+        {restError && (
+          <pre className="text-xs text-destructive max-w-full overflow-auto whitespace-pre-wrap border border-destructive/30 rounded p-3 bg-destructive/5">
+            {`Erro: ${restError.message}\n${(restError as any)?.code ? `Código: ${(restError as any).code}\n` : ""}${(restError as any)?.details ? `Detalhes: ${(restError as any).details}\n` : ""}${(restError as any)?.hint ? `Hint: ${(restError as any).hint}` : ""}`}
+          </pre>
+        )}
+        <Button variant="outline" onClick={async () => { await signOut(); navigate("/login"); }}>Sair</Button>
+      </div>
+    );
   }
 
   if (restaurant.is_blocked) {
