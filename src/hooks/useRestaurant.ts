@@ -20,11 +20,13 @@ export function useRestaurant() {
     queryKey: ["restaurant", user?.id],
     queryFn: async () => {
       if (!user) return null;
+      console.log("[useRestaurant] querying for user", user.id);
       const { data: base, error } = await supabase
         .from("restaurants")
         .select("id, name, slug, description, logo_url, is_blocked, table_count, pix_enabled, pix_recipient_name, pix_city, created_at, updated_at, owner_id")
         .eq("owner_id", user.id)
         .maybeSingle();
+      console.log("[useRestaurant] result", { base, error });
       if (error) throw error;
       if (!base) return null;
 
