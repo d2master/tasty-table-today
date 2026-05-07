@@ -107,6 +107,7 @@ export function useRestaurant() {
   return {
     restaurant: restaurantQuery.data,
     isLoading: restaurantQuery.isLoading,
+    error: restaurantQuery.error as Error | null,
     createRestaurant,
     updateTrashPassword,
     updatePixSettings,
