@@ -175,7 +175,7 @@ export default function Dashboard() {
     setTableCountInput(String((restaurant as any).table_count ?? 0));
   }, [restaurant]);
 
-  if (authLoading || restLoading) {
+  if (authLoading || !user || restLoading) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando...</div>;
   }
 
