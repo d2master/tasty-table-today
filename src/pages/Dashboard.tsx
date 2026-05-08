@@ -27,6 +27,7 @@ type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "pix"
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendente", color: "bg-warning text-warning-foreground" },
   preparing: { label: "Em Preparo", color: "bg-info text-info-foreground" },
+  ready: { label: "Pronto", color: "bg-accent text-accent-foreground" },
   done: { label: "Finalizado", color: "bg-success text-success-foreground" },
   cancelled: { label: "Cancelado", color: "bg-destructive text-destructive-foreground" },
 };
