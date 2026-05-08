@@ -27,6 +27,7 @@ type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "pix"
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendente", color: "bg-warning text-warning-foreground" },
   preparing: { label: "Em Preparo", color: "bg-info text-info-foreground" },
+  ready: { label: "Pronto", color: "bg-accent text-accent-foreground" },
   done: { label: "Finalizado", color: "bg-success text-success-foreground" },
   cancelled: { label: "Cancelado", color: "bg-destructive text-destructive-foreground" },
 };
@@ -547,7 +548,7 @@ export default function Dashboard() {
       {!isTrash && (
         <>
           <div className="flex flex-wrap gap-2">
-            {["pending", "preparing", "done", "cancelled"].map(s => (
+            {["pending", "preparing", "ready", "done", "cancelled"].map(s => (
               <Button
                 key={s}
                 size="sm"
