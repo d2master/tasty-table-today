@@ -554,9 +554,10 @@ export default function PublicMenu() {
                 const steps = [
                   { key: "pending", label: "Pendente", desc: "Aguardando a lanchonete aceitar" },
                   { key: "preparing", label: "Em preparo", desc: "A lanchonete está preparando" },
-                  { key: "done", label: "Finalizado", desc: "Pedido pronto / entregue" },
+                  { key: "ready", label: "Pronto", desc: "Seu pedido está pronto" },
+                  { key: "done", label: "Finalizado", desc: "Pedido entregue / encerrado" },
                 ];
-                const order = ["pending", "preparing", "done"];
+                const order = ["pending", "preparing", "ready", "done"];
                 const currentIdx = order.indexOf(status);
                 const isCancelled = status === "cancelled";
 
