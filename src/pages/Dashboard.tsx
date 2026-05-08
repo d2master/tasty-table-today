@@ -548,7 +548,7 @@ export default function Dashboard() {
       {!isTrash && (
         <>
           <div className="flex flex-wrap gap-2">
-            {["pending", "preparing", "done", "cancelled"].map(s => (
+            {["pending", "preparing", "ready", "done", "cancelled"].map(s => (
               <Button
                 key={s}
                 size="sm"
