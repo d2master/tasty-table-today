@@ -1062,6 +1062,11 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center justify-between">
                       <Badge variant={p.is_available ? "default" : "secondary"}>{p.is_available ? "Disponível" : "Indisponível"}</Badge>
+                      {p.track_stock && (
+                        <Badge variant={p.stock_quantity > 0 ? "outline" : "destructive"}>
+                          {p.stock_quantity > 0 ? `${p.stock_quantity} em estoque` : "Sem estoque"}
+                        </Badge>
+                      )}
                       <div className="flex gap-1">
                         <Button size="sm" variant="ghost" onClick={() => startEditProduct(p)}><Pencil className="h-4 w-4" /></Button>
                         <Button size="sm" variant="ghost" onClick={async () => { if (confirm("Excluir produto?")) { await deleteProduct.mutateAsync(p.id); toast.success("Excluído!"); } }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
