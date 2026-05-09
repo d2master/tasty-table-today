@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
     const productIds = [...new Set(body.items.map((i) => i.product_id))];
     const { data: products, error: pErr } = await supabase
       .from("products")
-      .select("id, name, price, promo_price, is_promo, is_available, restaurant_id")
+      .select("id, name, price, promo_price, is_promo, is_available, restaurant_id, track_stock, stock_quantity")
       .in("id", productIds);
 
     if (pErr || !products) {
@@ -96,6 +96,12 @@ Deno.serve(async (req) => {
       if (!p || p.restaurant_id !== restaurant.id || !p.is_available) {
         return new Response(JSON.stringify({ error: "Invalid product in cart" }), {
           status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (p.track_stock && (p.stock_quantity ?? 0) < item.quantity) {
+        return new Response(JSON.stringify({ error: `Sem estoque suficiente para "${p.name}"` }), {
+          status: 409,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -210,6 +216,36 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Failed to save items" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Atomic stock decrement for tracked products. Aggregate quantities per product.
+    const decrements = new Map<string, number>();
+    for (const it of computedItems) {
+      const p = productMap.get(it.product_id)!;
+      if (p.track_stock) decrements.set(it.product_id, (decrements.get(it.product_id) ?? 0) + it.quantity);
+    }
+    const applied: Array<{ id: string; qty: number }> = [];
+    for (const [pid, qty] of decrements) {
+      const current = productMap.get(pid)!.stock_quantity ?? 0;
+      const { data: updated, error: decErr } = await supabase
+        .from("products")
+        .update({ stock_quantity: current - qty })
+        .eq("id", pid)
+        .gte("stock_quantity", qty)
+        .select("id");
+      if (decErr || !updated || updated.length === 0) {
+        // Rollback any prior decrements and the order
+        for (const a of applied) {
+          const { data: cur } = await supabase.from("products").select("stock_quantity").eq("id", a.id).maybeSingle();
+          const restored = (cur?.stock_quantity ?? 0) + a.qty;
+          await supabase.from("products").update({ stock_quantity: restored }).eq("id", a.id);
+        }
+        await supabase.from("orders").delete().eq("id", orderId);
+        return new Response(JSON.stringify({ error: `Sem estoque suficiente para "${productMap.get(pid)!.name}"` }), {
+          status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      applied.push({ id: pid, qty });
     }
 
     return new Response(JSON.stringify({

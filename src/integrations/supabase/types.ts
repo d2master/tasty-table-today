@@ -218,6 +218,8 @@ export type Database = {
           promo_price: number | null
           restaurant_id: string
           sort_order: number
+          stock_quantity: number
+          track_stock: boolean
           updated_at: string
         }
         Insert: {
@@ -233,6 +235,8 @@ export type Database = {
           promo_price?: number | null
           restaurant_id: string
           sort_order?: number
+          stock_quantity?: number
+          track_stock?: boolean
           updated_at?: string
         }
         Update: {
@@ -248,6 +252,8 @@ export type Database = {
           promo_price?: number | null
           restaurant_id?: string
           sort_order?: number
+          stock_quantity?: number
+          track_stock?: boolean
           updated_at?: string
         }
         Relationships: [
@@ -398,6 +404,7 @@ export type Database = {
         Args: { _order_id: string; _password: string }
         Returns: undefined
       }
+      restore_order_stock: { Args: { _order_id: string }; Returns: undefined }
       set_pix_password: { Args: { _new_password: string }; Returns: undefined }
       update_pix_settings_with_password: {
         Args: {

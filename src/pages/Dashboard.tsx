@@ -78,7 +78,7 @@ export default function Dashboard() {
   // Product form
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
-  const [productForm, setProductForm] = useState({ name: "", description: "", price: "", promo_price: "", is_promo: false, category_id: "", is_available: true });
+  const [productForm, setProductForm] = useState({ name: "", description: "", price: "", promo_price: "", is_promo: false, category_id: "", is_available: true, track_stock: false, stock_quantity: "" });
   const [productImage, setProductImage] = useState<File | null>(null);
   const [savingProduct, setSavingProduct] = useState(false);
 
@@ -229,7 +229,7 @@ export default function Dashboard() {
   };
 
   const resetProductForm = () => {
-    setProductForm({ name: "", description: "", price: "", promo_price: "", is_promo: false, category_id: "", is_available: true });
+    setProductForm({ name: "", description: "", price: "", promo_price: "", is_promo: false, category_id: "", is_available: true, track_stock: false, stock_quantity: "" });
     setProductImage(null);
     setEditingProduct(null);
     setShowProductForm(false);
@@ -244,6 +244,10 @@ export default function Dashboard() {
     if (productForm.is_promo) {
       if (!promoVal || promoVal <= 0) { toast.error("Informe um preço promocional válido"); return; }
       if (promoVal >= parseFloat(productForm.price)) { toast.error("O preço promocional deve ser menor que o preço original"); return; }
+    }
+    const stockQty = productForm.track_stock ? parseInt(productForm.stock_quantity || "0", 10) : 0;
+    if (productForm.track_stock && (!Number.isInteger(stockQty) || stockQty < 0)) {
+      toast.error("Quantidade em estoque inválida"); return;
     }
     setSavingProduct(true);
     try {
@@ -262,6 +266,8 @@ export default function Dashboard() {
           is_promo: productForm.is_promo,
           category_id: productForm.category_id,
           is_available: productForm.is_available,
+          track_stock: productForm.track_stock,
+          stock_quantity: stockQty,
           ...(image_url ? { image_url } : {}),
         });
         toast.success("Produto atualizado!");
@@ -274,6 +280,8 @@ export default function Dashboard() {
           is_promo: productForm.is_promo,
           category_id: productForm.category_id,
           is_available: productForm.is_available,
+          track_stock: productForm.track_stock,
+          stock_quantity: stockQty,
           image_url,
           restaurant_id: restaurant.id,
           sort_order: 0,
@@ -297,6 +305,8 @@ export default function Dashboard() {
       is_promo: !!p.is_promo,
       category_id: p.category_id,
       is_available: p.is_available,
+      track_stock: !!p.track_stock,
+      stock_quantity: p.stock_quantity != null ? String(p.stock_quantity) : "",
     });
     setShowProductForm(true);
   };
@@ -1005,6 +1015,24 @@ export default function Dashboard() {
                       <p className="text-xs text-muted-foreground">Deve ser menor que o preço original. O preço antigo aparecerá riscado no cardápio.</p>
                     </div>
                   )}
+                  <div className="flex items-center gap-2">
+                    <Switch checked={productForm.track_stock} onCheckedChange={v => setProductForm(p => ({ ...p, track_stock: v }))} />
+                    <Label>Controlar estoque</Label>
+                  </div>
+                  {productForm.track_stock && (
+                    <div className="space-y-2">
+                      <Label>Quantidade disponível</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={productForm.stock_quantity}
+                        onChange={e => setProductForm(p => ({ ...p, stock_quantity: e.target.value }))}
+                        placeholder="Ex: 20"
+                      />
+                      <p className="text-xs text-muted-foreground">O cliente não vê a quantidade. O item some do cardápio quando chegar a zero.</p>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={handleSaveProduct} disabled={savingProduct}>{savingProduct ? "Salvando..." : "Salvar"}</Button>
@@ -1032,8 +1060,15 @@ export default function Dashboard() {
                         <span className="font-display font-bold text-primary whitespace-nowrap">R$ {Number(p.price).toFixed(2)}</span>
                       )}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <Badge variant={p.is_available ? "default" : "secondary"}>{p.is_available ? "Disponível" : "Indisponível"}</Badge>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant={p.is_available ? "default" : "secondary"}>{p.is_available ? "Disponível" : "Indisponível"}</Badge>
+                        {p.track_stock && (
+                          <Badge variant={p.stock_quantity > 0 ? "outline" : "destructive"}>
+                            {p.stock_quantity > 0 ? `${p.stock_quantity} em estoque` : "Sem estoque"}
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex gap-1">
                         <Button size="sm" variant="ghost" onClick={() => startEditProduct(p)}><Pencil className="h-4 w-4" /></Button>
                         <Button size="sm" variant="ghost" onClick={async () => { if (confirm("Excluir produto?")) { await deleteProduct.mutateAsync(p.id); toast.success("Excluído!"); } }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
