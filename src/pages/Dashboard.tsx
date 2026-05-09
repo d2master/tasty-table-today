@@ -1015,6 +1015,24 @@ export default function Dashboard() {
                       <p className="text-xs text-muted-foreground">Deve ser menor que o preço original. O preço antigo aparecerá riscado no cardápio.</p>
                     </div>
                   )}
+                  <div className="flex items-center gap-2">
+                    <Switch checked={productForm.track_stock} onCheckedChange={v => setProductForm(p => ({ ...p, track_stock: v }))} />
+                    <Label>Controlar estoque</Label>
+                  </div>
+                  {productForm.track_stock && (
+                    <div className="space-y-2">
+                      <Label>Quantidade disponível</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={productForm.stock_quantity}
+                        onChange={e => setProductForm(p => ({ ...p, stock_quantity: e.target.value }))}
+                        placeholder="Ex: 20"
+                      />
+                      <p className="text-xs text-muted-foreground">O cliente não vê a quantidade. O item some do cardápio quando chegar a zero.</p>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={handleSaveProduct} disabled={savingProduct}>{savingProduct ? "Salvando..." : "Salvar"}</Button>
