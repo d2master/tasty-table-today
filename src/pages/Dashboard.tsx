@@ -245,6 +245,10 @@ export default function Dashboard() {
       if (!promoVal || promoVal <= 0) { toast.error("Informe um preço promocional válido"); return; }
       if (promoVal >= parseFloat(productForm.price)) { toast.error("O preço promocional deve ser menor que o preço original"); return; }
     }
+    const stockQty = productForm.track_stock ? parseInt(productForm.stock_quantity || "0", 10) : 0;
+    if (productForm.track_stock && (!Number.isInteger(stockQty) || stockQty < 0)) {
+      toast.error("Quantidade em estoque inválida"); return;
+    }
     setSavingProduct(true);
     try {
       let image_url: string | null = null;
@@ -262,6 +266,8 @@ export default function Dashboard() {
           is_promo: productForm.is_promo,
           category_id: productForm.category_id,
           is_available: productForm.is_available,
+          track_stock: productForm.track_stock,
+          stock_quantity: stockQty,
           ...(image_url ? { image_url } : {}),
         });
         toast.success("Produto atualizado!");
@@ -274,6 +280,8 @@ export default function Dashboard() {
           is_promo: productForm.is_promo,
           category_id: productForm.category_id,
           is_available: productForm.is_available,
+          track_stock: productForm.track_stock,
+          stock_quantity: stockQty,
           image_url,
           restaurant_id: restaurant.id,
           sort_order: 0,
@@ -297,6 +305,8 @@ export default function Dashboard() {
       is_promo: !!p.is_promo,
       category_id: p.category_id,
       is_available: p.is_available,
+      track_stock: !!p.track_stock,
+      stock_quantity: p.stock_quantity != null ? String(p.stock_quantity) : "",
     });
     setShowProductForm(true);
   };
