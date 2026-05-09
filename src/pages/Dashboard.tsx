@@ -229,7 +229,7 @@ export default function Dashboard() {
   };
 
   const resetProductForm = () => {
-    setProductForm({ name: "", description: "", price: "", promo_price: "", is_promo: false, category_id: "", is_available: true });
+    setProductForm({ name: "", description: "", price: "", promo_price: "", is_promo: false, category_id: "", is_available: true, track_stock: false, stock_quantity: "" });
     setProductImage(null);
     setEditingProduct(null);
     setShowProductForm(false);
