@@ -68,6 +68,8 @@ interface Product {
   is_promo: boolean;
   image_url: string | null;
   is_available: boolean;
+  track_stock: boolean;
+  stock_quantity: number;
   category_id: string;
 }
 
