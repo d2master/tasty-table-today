@@ -236,8 +236,9 @@ Deno.serve(async (req) => {
       if (decErr || !updated || updated.length === 0) {
         // Rollback any prior decrements and the order
         for (const a of applied) {
-          const cur = productMap.get(a.id)!.stock_quantity ?? 0;
-          await supabase.from("products").update({ stock_quantity: cur }).eq("id", a.id);
+          const { data: cur } = await supabase.from("products").select("stock_quantity").eq("id", a.id).maybeSingle();
+          const restored = (cur?.stock_quantity ?? 0) + a.qty;
+          await supabase.from("products").update({ stock_quantity: restored }).eq("id", a.id);
         }
         await supabase.from("orders").delete().eq("id", orderId);
         return new Response(JSON.stringify({ error: `Sem estoque suficiente para "${productMap.get(pid)!.name}"` }), {
