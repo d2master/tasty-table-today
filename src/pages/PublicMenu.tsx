@@ -233,6 +233,11 @@ export default function PublicMenu() {
   const addToCart = (product: Product) => {
     setCart(prev => {
       const existing = prev.find(c => c.product.id === product.id);
+      const currentQty = existing?.quantity ?? 0;
+      if (product.track_stock && currentQty + 1 > product.stock_quantity) {
+        toast.error("Quantidade indisponível");
+        return prev;
+      }
       if (existing) return prev.map(c => c.product.id === product.id ? { ...c, quantity: c.quantity + 1 } : c);
       return [...prev, { product, quantity: 1 }];
     });
@@ -240,7 +245,15 @@ export default function PublicMenu() {
   };
 
   const updateQuantity = (productId: string, delta: number) => {
-    setCart(prev => prev.map(c => c.product.id === productId ? { ...c, quantity: Math.max(0, c.quantity + delta) } : c).filter(c => c.quantity > 0));
+    setCart(prev => prev.map(c => {
+      if (c.product.id !== productId) return c;
+      const next = Math.max(0, c.quantity + delta);
+      if (delta > 0 && c.product.track_stock && next > c.product.stock_quantity) {
+        toast.error("Quantidade indisponível");
+        return c;
+      }
+      return { ...c, quantity: next };
+    }).filter(c => c.quantity > 0));
   };
 
   const cartTotal = cart.reduce((sum, c) => sum + c.quantity * effectivePrice(c.product), 0);
