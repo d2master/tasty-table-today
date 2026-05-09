@@ -128,11 +128,9 @@ export default function PublicMenu() {
   useEffect(() => {
     if (!slug) return;
     (async () => {
-      const { data: rest } = await supabase
-        .from("restaurants")
-        .select("id, name, slug, description, is_blocked, table_count, pix_enabled, pix_recipient_name, pix_city, logo_url")
-        .eq("slug", slug)
-        .maybeSingle();
+      const { data: restRows } = await supabase
+        .rpc("get_public_restaurant_by_slug", { _slug: slug });
+      const rest = Array.isArray(restRows) ? restRows[0] : restRows;
       if (!rest) { setNotFound(true); setLoading(false); return; }
       setRestaurant({
         id: rest.id,

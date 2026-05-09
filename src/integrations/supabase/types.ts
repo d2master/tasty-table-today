@@ -360,6 +360,21 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_public_restaurant_by_slug: {
+        Args: { _slug: string }
+        Returns: {
+          description: string
+          id: string
+          is_blocked: boolean
+          logo_url: string
+          name: string
+          pix_city: string
+          pix_enabled: boolean
+          pix_recipient_name: string
+          slug: string
+          table_count: number
+        }[]
+      }
       get_restaurant_pix_for_checkout: {
         Args: { _slug: string }
         Returns: {
