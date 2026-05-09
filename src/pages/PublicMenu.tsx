@@ -155,7 +155,9 @@ export default function PublicMenu() {
       ]);
 
       setCategories(catRes.data ?? []);
-      setProducts(prodRes.data as Product[] ?? []);
+      // Hide products that are tracked-stock and out of stock
+      const allProducts = (prodRes.data as Product[]) ?? [];
+      setProducts(allProducts.filter(p => !p.track_stock || p.stock_quantity > 0));
       if (catRes.data?.length) setActiveCategory(catRes.data[0].id);
       setLoading(false);
     })();
