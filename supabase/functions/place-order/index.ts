@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
     const productIds = [...new Set(body.items.map((i) => i.product_id))];
     const { data: products, error: pErr } = await supabase
       .from("products")
-      .select("id, name, price, promo_price, is_promo, is_available, restaurant_id")
+      .select("id, name, price, promo_price, is_promo, is_available, restaurant_id, track_stock, stock_quantity")
       .in("id", productIds);
 
     if (pErr || !products) {
@@ -96,6 +96,12 @@ Deno.serve(async (req) => {
       if (!p || p.restaurant_id !== restaurant.id || !p.is_available) {
         return new Response(JSON.stringify({ error: "Invalid product in cart" }), {
           status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (p.track_stock && (p.stock_quantity ?? 0) < item.quantity) {
+        return new Response(JSON.stringify({ error: `Sem estoque suficiente para "${p.name}"` }), {
+          status: 409,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
