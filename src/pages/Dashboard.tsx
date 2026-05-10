@@ -405,6 +405,33 @@ export default function Dashboard() {
     }
   };
 
+  const handleToggleShift = async (open: boolean) => {
+    setSavingShift(true);
+    try {
+      await updateOpenStatus.mutateAsync({ is_open: open, closed_message: closedMessageInput });
+      toast.success(open ? "Lanchonete aberta!" : "Expediente encerrado.");
+    } catch {
+      toast.error("Erro ao atualizar expediente.");
+    } finally {
+      setSavingShift(false);
+    }
+  };
+
+  const handleSaveClosedMessage = async () => {
+    setSavingShift(true);
+    try {
+      await updateOpenStatus.mutateAsync({
+        is_open: Boolean((restaurant as any)?.is_open),
+        closed_message: closedMessageInput,
+      });
+      toast.success("Mensagem salva!");
+    } catch {
+      toast.error("Erro ao salvar mensagem.");
+    } finally {
+      setSavingShift(false);
+    }
+  };
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayOrders = orders.filter(o => new Date(o.created_at) >= today);
