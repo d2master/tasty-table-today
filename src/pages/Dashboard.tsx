@@ -176,6 +176,7 @@ export default function Dashboard() {
       pix_city: (restaurant as any).pix_city ?? "",
     });
     setTableCountInput(String((restaurant as any).table_count ?? 0));
+    setClosedMessageInput((restaurant as any).closed_message ?? "");
   }, [restaurant]);
 
   if (authLoading || !user || restLoading) {
