@@ -123,6 +123,8 @@ export default function Dashboard() {
   // Tables config
   const [tableCountInput, setTableCountInput] = useState("");
   const [savingTableCount, setSavingTableCount] = useState(false);
+  const [closedMessageInput, setClosedMessageInput] = useState("");
+  const [savingShift, setSavingShift] = useState(false);
 
   // Track order count for new-order sound
   const prevOrderCountRef = useRef<number | null>(null);
