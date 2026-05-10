@@ -548,9 +548,16 @@ export default function PublicMenu() {
       {/* Cart FAB */}
       {cartCount > 0 && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-card border-t shadow-lg z-40">
-          <Button className="w-full gap-2" size="lg" onClick={() => setShowCart(true)}>
+          <Button
+            className="w-full gap-2"
+            size="lg"
+            onClick={() => setShowCart(true)}
+            disabled={restaurant?.is_open === false}
+          >
             <ShoppingCart className="h-5 w-5" />
-            Ver Carrinho ({cartCount}) — R$ {cartTotal.toFixed(2)}
+            {restaurant?.is_open === false
+              ? "Lanchonete fechada"
+              : `Ver Carrinho (${cartCount}) — R$ ${cartTotal.toFixed(2)}`}
           </Button>
         </div>
       )}
