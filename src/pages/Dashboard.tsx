@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import type { OrderItem } from "@/hooks/useOrders";
 import { z } from "zod";
 
-type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "pix" | "tables";
+type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "pix" | "tables" | "shift";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendente", color: "bg-warning text-warning-foreground" },
