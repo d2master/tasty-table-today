@@ -723,6 +723,7 @@ export default function Dashboard() {
     { id: "orders-old" as Tab, label: "Pedidos anteriores", icon: ShoppingBag, count: olderOrders.length || undefined },
     { id: "trash" as Tab, label: "Lixeira", icon: Trash2, count: validTrashOrders.length || undefined },
     { id: "tables" as Tab, label: "Mesas", icon: Armchair },
+    { id: "shift" as Tab, label: "Expediente", icon: Power },
     { id: "pix" as Tab, label: "Pix", icon: QrCode },
     { id: "products" as Tab, label: "Produtos", icon: Package },
     { id: "categories" as Tab, label: "Categorias", icon: FolderOpen },
