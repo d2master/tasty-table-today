@@ -429,6 +429,18 @@ export default function PublicMenu() {
         </div>
       </header>
 
+      {restaurant && restaurant.is_open === false && (
+        <div className="bg-destructive/10 border-b border-destructive/30 text-destructive">
+          <div className="container py-4 text-center">
+            <p className="font-bold uppercase tracking-wide text-sm">Lanchonete fechada</p>
+            <p className="text-sm mt-1 whitespace-pre-line text-destructive/90">
+              {restaurant.closed_message || "Estamos fechados no momento. Volte em breve!"}
+            </p>
+            <p className="text-xs mt-2 text-muted-foreground">Você pode visualizar o cardápio, mas pedidos estão temporariamente indisponíveis.</p>
+          </div>
+        </div>
+      )}
+
       {/* Category Tabs */}
       <div className="sticky top-0 z-40 bg-card border-b">
         <div className="container flex gap-2 overflow-x-auto py-3 scrollbar-hide">
