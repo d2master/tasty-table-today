@@ -218,34 +218,29 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Atomic stock decrement for tracked products. Aggregate quantities per product.
+    // Atomic stock decrement: aggregate quantities per tracked product, then call
+    // a SECURITY DEFINER function that locks the rows (FOR UPDATE) and decrements
+    // them in a single transaction. This is safe against concurrent carts —
+    // simultaneous orders are serialized on the same product rows, and any
+    // shortfall raises an exception that rolls back ALL decrements at once.
     const decrements = new Map<string, number>();
     for (const it of computedItems) {
       const p = productMap.get(it.product_id)!;
       if (p.track_stock) decrements.set(it.product_id, (decrements.get(it.product_id) ?? 0) + it.quantity);
     }
-    const applied: Array<{ id: string; qty: number }> = [];
-    for (const [pid, qty] of decrements) {
-      const current = productMap.get(pid)!.stock_quantity ?? 0;
-      const { data: updated, error: decErr } = await supabase
-        .from("products")
-        .update({ stock_quantity: current - qty })
-        .eq("id", pid)
-        .gte("stock_quantity", qty)
-        .select("id");
-      if (decErr || !updated || updated.length === 0) {
-        // Rollback any prior decrements and the order
-        for (const a of applied) {
-          const { data: cur } = await supabase.from("products").select("stock_quantity").eq("id", a.id).maybeSingle();
-          const restored = (cur?.stock_quantity ?? 0) + a.qty;
-          await supabase.from("products").update({ stock_quantity: restored }).eq("id", a.id);
-        }
+    if (decrements.size > 0) {
+      const itemsPayload = Array.from(decrements, ([product_id, quantity]) => ({ product_id, quantity }));
+      const { error: decErr } = await supabase.rpc("decrement_stock_for_order", { _items: itemsPayload });
+      if (decErr) {
+        // Roll back the order; stock changes (if any) were rolled back by the failed transaction.
         await supabase.from("orders").delete().eq("id", orderId);
-        return new Response(JSON.stringify({ error: `Sem estoque suficiente para "${productMap.get(pid)!.name}"` }), {
+        const msg = decErr.message ?? "";
+        const match = msg.match(/INSUFFICIENT_STOCK:(.+?)(?:$|")/);
+        const productName = match ? match[1] : "produto";
+        return new Response(JSON.stringify({ error: `Sem estoque suficiente para "${productName}"` }), {
           status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      applied.push({ id: pid, qty });
     }
 
     return new Response(JSON.stringify({
