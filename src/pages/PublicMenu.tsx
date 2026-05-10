@@ -24,6 +24,8 @@ interface Restaurant {
   slug: string;
   description: string | null;
   is_blocked?: boolean;
+  is_open?: boolean;
+  closed_message?: string;
   table_count?: number;
   pix_enabled?: boolean;
   pix_key?: string | null;
