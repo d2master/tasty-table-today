@@ -338,6 +338,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      decrement_stock_for_order: { Args: { _items: Json }; Returns: undefined }
       get_available_tables: {
         Args: { _slug: string }
         Returns: {
