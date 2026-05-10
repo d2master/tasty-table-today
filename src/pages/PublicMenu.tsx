@@ -142,6 +142,8 @@ export default function PublicMenu() {
         slug: rest.slug,
         description: rest.description,
         is_blocked: rest.is_blocked,
+        is_open: (rest as { is_open?: boolean }).is_open ?? true,
+        closed_message: (rest as { closed_message?: string }).closed_message ?? "",
         table_count: (rest as { table_count?: number }).table_count ?? 0,
         pix_enabled: rest.pix_enabled,
         pix_key: null,
