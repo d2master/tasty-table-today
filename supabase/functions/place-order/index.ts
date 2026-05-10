@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     // Fetch restaurant
     const { data: restaurant, error: rErr } = await supabase
       .from("restaurants")
-      .select("id, name, slug, is_blocked, table_count, pix_enabled, pix_key, pix_key_type, pix_recipient_name, pix_city")
+      .select("id, name, slug, is_blocked, is_open, closed_message, table_count, pix_enabled, pix_key, pix_key_type, pix_recipient_name, pix_city")
       .eq("slug", body.slug)
       .maybeSingle();
 
@@ -55,6 +55,12 @@ Deno.serve(async (req) => {
     }
     if (restaurant.is_blocked) {
       return new Response(JSON.stringify({ error: "Restaurant unavailable" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (restaurant.is_open === false) {
+      return new Response(JSON.stringify({ error: restaurant.closed_message || "Lanchonete fechada no momento" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

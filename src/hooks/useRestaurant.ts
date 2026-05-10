@@ -23,7 +23,7 @@ export function useRestaurant() {
       console.log("[useRestaurant] querying for user", user.id);
       const { data: base, error } = await supabase
         .from("restaurants")
-        .select("id, name, slug, description, logo_url, is_blocked, table_count, pix_enabled, pix_recipient_name, pix_city, created_at, updated_at, owner_id")
+        .select("id, name, slug, description, logo_url, is_blocked, table_count, pix_enabled, pix_recipient_name, pix_city, is_open, closed_message, created_at, updated_at, owner_id")
         .eq("owner_id", user.id)
         .maybeSingle();
       console.log("[useRestaurant] result", { base, error });
@@ -49,6 +49,19 @@ export function useRestaurant() {
       const { error } = await supabase
         .from("restaurants")
         .update({ table_count: count })
+        .eq("id", restaurantQuery.data!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["restaurant"] }),
+  });
+
+  const updateOpenStatus = useMutation({
+    mutationFn: async ({ is_open, closed_message }: { is_open: boolean; closed_message?: string }) => {
+      const payload: { is_open: boolean; closed_message?: string } = { is_open };
+      if (typeof closed_message === "string") payload.closed_message = closed_message;
+      const { error } = await supabase
+        .from("restaurants")
+        .update(payload)
         .eq("id", restaurantQuery.data!.id);
       if (error) throw error;
     },
@@ -113,5 +126,6 @@ export function useRestaurant() {
     updatePixSettings,
     setPixPassword,
     updateTableCount,
+    updateOpenStatus,
   };
 }

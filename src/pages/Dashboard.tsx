@@ -16,13 +16,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw, Armchair } from "lucide-react";
+import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw, Armchair, Power } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import type { OrderItem } from "@/hooks/useOrders";
 import { z } from "zod";
 
-type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "pix" | "tables";
+type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "pix" | "tables" | "shift";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendente", color: "bg-warning text-warning-foreground" },
@@ -65,7 +65,7 @@ const pixSchema = z.object({
 export default function Dashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
-  const { restaurant, isLoading: restLoading, error: restError, updateTrashPassword, updatePixSettings, setPixPassword, updateTableCount } = useRestaurant();
+  const { restaurant, isLoading: restLoading, error: restError, updateTrashPassword, updatePixSettings, setPixPassword, updateTableCount, updateOpenStatus } = useRestaurant();
   const { categories, createCategory, updateCategory, deleteCategory } = useCategories(restaurant?.id);
   const { products, createProduct, updateProduct, deleteProduct } = useProducts(restaurant?.id);
   const { orders, trashOrders, updateOrderStatus, softDeleteOrder, restoreOrder, markOrderAsPaid, getOrderItems } = useOrders(restaurant?.id);
@@ -123,6 +123,8 @@ export default function Dashboard() {
   // Tables config
   const [tableCountInput, setTableCountInput] = useState("");
   const [savingTableCount, setSavingTableCount] = useState(false);
+  const [closedMessageInput, setClosedMessageInput] = useState("");
+  const [savingShift, setSavingShift] = useState(false);
 
   // Track order count for new-order sound
   const prevOrderCountRef = useRef<number | null>(null);
@@ -174,6 +176,7 @@ export default function Dashboard() {
       pix_city: (restaurant as any).pix_city ?? "",
     });
     setTableCountInput(String((restaurant as any).table_count ?? 0));
+    setClosedMessageInput((restaurant as any).closed_message ?? "");
   }, [restaurant]);
 
   if (authLoading || !user || restLoading) {
@@ -399,6 +402,33 @@ export default function Dashboard() {
       toast.error("Erro ao salvar quantidade de mesas.");
     } finally {
       setSavingTableCount(false);
+    }
+  };
+
+  const handleToggleShift = async (open: boolean) => {
+    setSavingShift(true);
+    try {
+      await updateOpenStatus.mutateAsync({ is_open: open, closed_message: closedMessageInput });
+      toast.success(open ? "Lanchonete aberta!" : "Expediente encerrado.");
+    } catch {
+      toast.error("Erro ao atualizar expediente.");
+    } finally {
+      setSavingShift(false);
+    }
+  };
+
+  const handleSaveClosedMessage = async () => {
+    setSavingShift(true);
+    try {
+      await updateOpenStatus.mutateAsync({
+        is_open: Boolean((restaurant as any)?.is_open),
+        closed_message: closedMessageInput,
+      });
+      toast.success("Mensagem salva!");
+    } catch {
+      toast.error("Erro ao salvar mensagem.");
+    } finally {
+      setSavingShift(false);
     }
   };
 
@@ -693,6 +723,7 @@ export default function Dashboard() {
     { id: "orders-old" as Tab, label: "Pedidos anteriores", icon: ShoppingBag, count: olderOrders.length || undefined },
     { id: "trash" as Tab, label: "Lixeira", icon: Trash2, count: validTrashOrders.length || undefined },
     { id: "tables" as Tab, label: "Mesas", icon: Armchair },
+    { id: "shift" as Tab, label: "Expediente", icon: Power },
     { id: "pix" as Tab, label: "Pix", icon: QrCode },
     { id: "products" as Tab, label: "Produtos", icon: Package },
     { id: "categories" as Tab, label: "Categorias", icon: FolderOpen },
@@ -921,6 +952,55 @@ export default function Dashboard() {
               <p className="text-xs text-muted-foreground">
                 Atualmente configurado: <strong>{(restaurant as any).table_count ?? 0}</strong> mesa(s).
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* SHIFT TAB */}
+        {activeTab === "shift" && (
+          <div className="space-y-4 max-w-xl">
+            <div className="space-y-1">
+              <h2 className="font-display text-xl font-bold">Expediente da lanchonete</h2>
+              <p className="text-sm text-muted-foreground">
+                Quando o expediente estiver <strong>encerrado</strong>, o cardápio continua visível, mas os clientes não conseguem enviar pedidos. A mensagem abaixo será exibida para eles.
+              </p>
+            </div>
+
+            <div className="rounded-xl border bg-card p-4 space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-medium">Status atual</p>
+                  <p className="text-sm text-muted-foreground">
+                    {(restaurant as any).is_open ? (
+                      <span className="text-success font-semibold">Aberta — recebendo pedidos</span>
+                    ) : (
+                      <span className="text-destructive font-semibold">Fechada — pedidos bloqueados</span>
+                    )}
+                  </p>
+                </div>
+                <Switch
+                  checked={Boolean((restaurant as any).is_open)}
+                  disabled={savingShift}
+                  onCheckedChange={(v) => handleToggleShift(v)}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-xl border bg-card p-4 space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="closed-message">Mensagem exibida quando estiver fechada</Label>
+                <Textarea
+                  id="closed-message"
+                  value={closedMessageInput}
+                  onChange={(e) => setClosedMessageInput(e.target.value.slice(0, 300))}
+                  placeholder="Ex: Estamos fechados. Voltamos amanhã às 18h!"
+                  rows={4}
+                />
+                <p className="text-xs text-muted-foreground">{closedMessageInput.length}/300</p>
+              </div>
+              <Button onClick={handleSaveClosedMessage} disabled={savingShift}>
+                {savingShift ? "Salvando..." : "Salvar mensagem"}
+              </Button>
             </div>
           </div>
         )}

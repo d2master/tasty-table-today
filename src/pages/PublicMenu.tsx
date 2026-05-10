@@ -24,6 +24,8 @@ interface Restaurant {
   slug: string;
   description: string | null;
   is_blocked?: boolean;
+  is_open?: boolean;
+  closed_message?: string;
   table_count?: number;
   pix_enabled?: boolean;
   pix_key?: string | null;
@@ -140,6 +142,8 @@ export default function PublicMenu() {
         slug: rest.slug,
         description: rest.description,
         is_blocked: rest.is_blocked,
+        is_open: (rest as { is_open?: boolean }).is_open ?? true,
+        closed_message: (rest as { closed_message?: string }).closed_message ?? "",
         table_count: (rest as { table_count?: number }).table_count ?? 0,
         pix_enabled: rest.pix_enabled,
         pix_key: null,
@@ -275,6 +279,10 @@ export default function PublicMenu() {
     e.preventDefault();
     e.stopPropagation();
 
+    if (restaurant && restaurant.is_open === false) {
+      toast.error("Lanchonete fechada no momento");
+      return;
+    }
     if (cart.length === 0) {
       toast.error("Carrinho vazio");
       return;
@@ -421,6 +429,18 @@ export default function PublicMenu() {
         </div>
       </header>
 
+      {restaurant && restaurant.is_open === false && (
+        <div className="bg-destructive/10 border-b border-destructive/30 text-destructive">
+          <div className="container py-4 text-center">
+            <p className="font-bold uppercase tracking-wide text-sm">Lanchonete fechada</p>
+            <p className="text-sm mt-1 whitespace-pre-line text-destructive/90">
+              {restaurant.closed_message || "Estamos fechados no momento. Volte em breve!"}
+            </p>
+            <p className="text-xs mt-2 text-muted-foreground">Você pode visualizar o cardápio, mas pedidos estão temporariamente indisponíveis.</p>
+          </div>
+        </div>
+      )}
+
       {/* Category Tabs */}
       <div className="sticky top-0 z-40 bg-card border-b">
         <div className="container flex gap-2 overflow-x-auto py-3 scrollbar-hide">
@@ -528,9 +548,16 @@ export default function PublicMenu() {
       {/* Cart FAB */}
       {cartCount > 0 && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-card border-t shadow-lg z-40">
-          <Button className="w-full gap-2" size="lg" onClick={() => setShowCart(true)}>
+          <Button
+            className="w-full gap-2"
+            size="lg"
+            onClick={() => setShowCart(true)}
+            disabled={restaurant?.is_open === false}
+          >
             <ShoppingCart className="h-5 w-5" />
-            Ver Carrinho ({cartCount}) — R$ {cartTotal.toFixed(2)}
+            {restaurant?.is_open === false
+              ? "Lanchonete fechada"
+              : `Ver Carrinho (${cartCount}) — R$ ${cartTotal.toFixed(2)}`}
           </Button>
         </div>
       )}
