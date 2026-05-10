@@ -279,6 +279,10 @@ export default function PublicMenu() {
     e.preventDefault();
     e.stopPropagation();
 
+    if (restaurant && restaurant.is_open === false) {
+      toast.error("Lanchonete fechada no momento");
+      return;
+    }
     if (cart.length === 0) {
       toast.error("Carrinho vazio");
       return;
