@@ -956,6 +956,55 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* SHIFT TAB */}
+        {activeTab === "shift" && (
+          <div className="space-y-4 max-w-xl">
+            <div className="space-y-1">
+              <h2 className="font-display text-xl font-bold">Expediente da lanchonete</h2>
+              <p className="text-sm text-muted-foreground">
+                Quando o expediente estiver <strong>encerrado</strong>, o cardápio continua visível, mas os clientes não conseguem enviar pedidos. A mensagem abaixo será exibida para eles.
+              </p>
+            </div>
+
+            <div className="rounded-xl border bg-card p-4 space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-medium">Status atual</p>
+                  <p className="text-sm text-muted-foreground">
+                    {(restaurant as any).is_open ? (
+                      <span className="text-success font-semibold">Aberta — recebendo pedidos</span>
+                    ) : (
+                      <span className="text-destructive font-semibold">Fechada — pedidos bloqueados</span>
+                    )}
+                  </p>
+                </div>
+                <Switch
+                  checked={Boolean((restaurant as any).is_open)}
+                  disabled={savingShift}
+                  onCheckedChange={(v) => handleToggleShift(v)}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-xl border bg-card p-4 space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="closed-message">Mensagem exibida quando estiver fechada</Label>
+                <Textarea
+                  id="closed-message"
+                  value={closedMessageInput}
+                  onChange={(e) => setClosedMessageInput(e.target.value.slice(0, 300))}
+                  placeholder="Ex: Estamos fechados. Voltamos amanhã às 18h!"
+                  rows={4}
+                />
+                <p className="text-xs text-muted-foreground">{closedMessageInput.length}/300</p>
+              </div>
+              <Button onClick={handleSaveClosedMessage} disabled={savingShift}>
+                {savingShift ? "Salvando..." : "Salvar mensagem"}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* CATEGORIES TAB */}
         {activeTab === "categories" && (
           <div className="space-y-4">
