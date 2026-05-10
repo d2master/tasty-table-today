@@ -275,10 +275,12 @@ export type Database = {
       }
       restaurants: {
         Row: {
+          closed_message: string
           created_at: string
           description: string | null
           id: string
           is_blocked: boolean
+          is_open: boolean
           logo_url: string | null
           name: string
           owner_id: string
@@ -294,10 +296,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          closed_message?: string
           created_at?: string
           description?: string | null
           id?: string
           is_blocked?: boolean
+          is_open?: boolean
           logo_url?: string | null
           name: string
           owner_id: string
@@ -313,10 +317,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          closed_message?: string
           created_at?: string
           description?: string | null
           id?: string
           is_blocked?: boolean
+          is_open?: boolean
           logo_url?: string | null
           name?: string
           owner_id?: string
@@ -370,9 +376,11 @@ export type Database = {
       get_public_restaurant_by_slug: {
         Args: { _slug: string }
         Returns: {
+          closed_message: string
           description: string
           id: string
           is_blocked: boolean
+          is_open: boolean
           logo_url: string
           name: string
           pix_city: string
