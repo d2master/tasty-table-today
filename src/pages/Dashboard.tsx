@@ -125,6 +125,7 @@ export default function Dashboard() {
   const [savingTableCount, setSavingTableCount] = useState(false);
   const [closedMessageInput, setClosedMessageInput] = useState("");
   const [savingShift, setSavingShift] = useState(false);
+  const [closeShiftDialog, setCloseShiftDialog] = useState(false);
 
   // Track order count for new-order sound
   const prevOrderCountRef = useRef<number | null>(null);
@@ -406,12 +407,39 @@ export default function Dashboard() {
   };
 
   const handleToggleShift = async (open: boolean) => {
+    if (!open) {
+      // Closing shift requires choosing what to do with pending orders
+      setCloseShiftDialog(true);
+      return;
+    }
     setSavingShift(true);
     try {
-      await updateOpenStatus.mutateAsync({ is_open: open, closed_message: closedMessageInput });
-      toast.success(open ? "Lanchonete aberta!" : "Expediente encerrado.");
+      await updateOpenStatus.mutateAsync({ is_open: true, closed_message: closedMessageInput });
+      toast.success("Lanchonete aberta!");
     } catch {
       toast.error("Erro ao atualizar expediente.");
+    } finally {
+      setSavingShift(false);
+    }
+  };
+
+  const handleConfirmCloseShift = async (cancelPending: boolean) => {
+    setSavingShift(true);
+    try {
+      if (cancelPending && restaurant) {
+        const { error: cancelErr } = await supabase
+          .from("orders")
+          .update({ status: "cancelled" })
+          .eq("restaurant_id", restaurant.id)
+          .is("deleted_at", null)
+          .in("status", ["pending", "preparing", "ready"]);
+        if (cancelErr) throw cancelErr;
+      }
+      await updateOpenStatus.mutateAsync({ is_open: false, closed_message: closedMessageInput });
+      setCloseShiftDialog(false);
+      toast.success(cancelPending ? "Expediente encerrado e pedidos pendentes cancelados." : "Expediente encerrado.");
+    } catch {
+      toast.error("Erro ao encerrar expediente.");
     } finally {
       setSavingShift(false);
     }
@@ -1002,6 +1030,40 @@ export default function Dashboard() {
                 {savingShift ? "Salvando..." : "Salvar mensagem"}
               </Button>
             </div>
+
+            <Dialog open={closeShiftDialog} onOpenChange={(o) => !savingShift && setCloseShiftDialog(o)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Encerrar expediente</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                  O que deseja fazer com os pedidos pendentes (Pendente, Em preparo, Pronto)?
+                </p>
+                <DialogFooter className="flex-col sm:flex-col gap-2 sm:gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={savingShift}
+                    onClick={() => handleConfirmCloseShift(false)}
+                  >
+                    Manter pedidos em andamento
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    disabled={savingShift}
+                    onClick={() => handleConfirmCloseShift(true)}
+                  >
+                    Cancelar todos os pedidos pendentes
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    disabled={savingShift}
+                    onClick={() => setCloseShiftDialog(false)}
+                  >
+                    Voltar
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
 
