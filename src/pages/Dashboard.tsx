@@ -1030,6 +1030,40 @@ export default function Dashboard() {
                 {savingShift ? "Salvando..." : "Salvar mensagem"}
               </Button>
             </div>
+
+            <Dialog open={closeShiftDialog} onOpenChange={(o) => !savingShift && setCloseShiftDialog(o)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Encerrar expediente</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                  O que deseja fazer com os pedidos pendentes (Pendente, Em preparo, Pronto)?
+                </p>
+                <DialogFooter className="flex-col sm:flex-col gap-2 sm:gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={savingShift}
+                    onClick={() => handleConfirmCloseShift(false)}
+                  >
+                    Manter pedidos em andamento
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    disabled={savingShift}
+                    onClick={() => handleConfirmCloseShift(true)}
+                  >
+                    Cancelar todos os pedidos pendentes
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    disabled={savingShift}
+                    onClick={() => setCloseShiftDialog(false)}
+                  >
+                    Voltar
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
 
