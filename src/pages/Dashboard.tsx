@@ -407,12 +407,39 @@ export default function Dashboard() {
   };
 
   const handleToggleShift = async (open: boolean) => {
+    if (!open) {
+      // Closing shift requires choosing what to do with pending orders
+      setCloseShiftDialog(true);
+      return;
+    }
     setSavingShift(true);
     try {
-      await updateOpenStatus.mutateAsync({ is_open: open, closed_message: closedMessageInput });
-      toast.success(open ? "Lanchonete aberta!" : "Expediente encerrado.");
+      await updateOpenStatus.mutateAsync({ is_open: true, closed_message: closedMessageInput });
+      toast.success("Lanchonete aberta!");
     } catch {
       toast.error("Erro ao atualizar expediente.");
+    } finally {
+      setSavingShift(false);
+    }
+  };
+
+  const handleConfirmCloseShift = async (cancelPending: boolean) => {
+    setSavingShift(true);
+    try {
+      if (cancelPending && restaurant) {
+        const { error: cancelErr } = await supabase
+          .from("orders")
+          .update({ status: "cancelled" })
+          .eq("restaurant_id", restaurant.id)
+          .is("deleted_at", null)
+          .in("status", ["pending", "preparing", "ready"]);
+        if (cancelErr) throw cancelErr;
+      }
+      await updateOpenStatus.mutateAsync({ is_open: false, closed_message: closedMessageInput });
+      setCloseShiftDialog(false);
+      toast.success(cancelPending ? "Expediente encerrado e pedidos pendentes cancelados." : "Expediente encerrado.");
+    } catch {
+      toast.error("Erro ao encerrar expediente.");
     } finally {
       setSavingShift(false);
     }
