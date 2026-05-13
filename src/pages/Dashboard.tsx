@@ -125,6 +125,7 @@ export default function Dashboard() {
   const [savingTableCount, setSavingTableCount] = useState(false);
   const [closedMessageInput, setClosedMessageInput] = useState("");
   const [savingShift, setSavingShift] = useState(false);
+  const [closeShiftDialog, setCloseShiftDialog] = useState(false);
 
   // Track order count for new-order sound
   const prevOrderCountRef = useRef<number | null>(null);
