@@ -138,5 +138,6 @@ export function useRestaurant() {
     setPixPassword,
     updateTableCount,
     updateOpenStatus,
+    updateServiceMode,
   };
 }
