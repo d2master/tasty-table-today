@@ -169,6 +169,13 @@ export default function PublicMenu() {
     })();
   }, [slug]);
 
+  // Force order mode if restaurant only accepts one type
+  useEffect(() => {
+    if (!restaurant?.service_mode) return;
+    if (restaurant.service_mode === "delivery") setOrderMode("delivery");
+    else if (restaurant.service_mode === "table") setOrderMode("table");
+  }, [restaurant?.service_mode]);
+
   // Load active order from localStorage
   useEffect(() => {
     if (!slug) return;
