@@ -65,7 +65,7 @@ const pixSchema = z.object({
 export default function Dashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
-  const { restaurant, isLoading: restLoading, error: restError, updateTrashPassword, updatePixSettings, setPixPassword, updateTableCount, updateOpenStatus } = useRestaurant();
+  const { restaurant, isLoading: restLoading, error: restError, updateTrashPassword, updatePixSettings, setPixPassword, updateTableCount, updateOpenStatus, updateServiceMode } = useRestaurant();
   const { categories, createCategory, updateCategory, deleteCategory } = useCategories(restaurant?.id);
   const { products, createProduct, updateProduct, deleteProduct } = useProducts(restaurant?.id);
   const { orders, trashOrders, updateOrderStatus, softDeleteOrder, restoreOrder, markOrderAsPaid, getOrderItems } = useOrders(restaurant?.id);
