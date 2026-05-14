@@ -65,7 +65,7 @@ const pixSchema = z.object({
 export default function Dashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
-  const { restaurant, isLoading: restLoading, error: restError, updateTrashPassword, updatePixSettings, setPixPassword, updateTableCount, updateOpenStatus } = useRestaurant();
+  const { restaurant, isLoading: restLoading, error: restError, updateTrashPassword, updatePixSettings, setPixPassword, updateTableCount, updateOpenStatus, updateServiceMode } = useRestaurant();
   const { categories, createCategory, updateCategory, deleteCategory } = useCategories(restaurant?.id);
   const { products, createProduct, updateProduct, deleteProduct } = useProducts(restaurant?.id);
   const { orders, trashOrders, updateOrderStatus, softDeleteOrder, restoreOrder, markOrderAsPaid, getOrderItems } = useOrders(restaurant?.id);
@@ -1012,6 +1012,56 @@ export default function Dashboard() {
                   onCheckedChange={(v) => handleToggleShift(v)}
                 />
               </div>
+            </div>
+
+            {/* Service mode selector */}
+            <div className="rounded-xl border bg-card p-4 space-y-3">
+              <div className="space-y-1">
+                <p className="font-medium">Modo de atendimento</p>
+                <p className="text-xs text-muted-foreground">
+                  Escolha quais tipos de pedido sua lanchonete aceita no cardápio público.
+                </p>
+              </div>
+              {(() => {
+                const current = ((restaurant as any).service_mode ?? "both") as "both" | "delivery" | "table";
+                const options: { value: "both" | "delivery" | "table"; label: string; desc: string }[] = [
+                  { value: "both", label: "Mesas e Delivery", desc: "Aceita os dois tipos de pedido." },
+                  { value: "table", label: "Somente Mesas", desc: "Bloqueia pedidos de delivery." },
+                  { value: "delivery", label: "Somente Delivery", desc: "Bloqueia pedidos de mesa." },
+                ];
+                return (
+                  <div className="grid gap-2">
+                    {options.map((opt) => {
+                      const selected = current === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          disabled={updateServiceMode.isPending || selected}
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            try {
+                              await updateServiceMode.mutateAsync(opt.value);
+                              toast.success("Modo de atendimento atualizado.");
+                            } catch (err: any) {
+                              toast.error(err?.message || "Falha ao atualizar modo de atendimento.");
+                            }
+                          }}
+                          className={`text-left rounded-lg border p-3 transition-colors ${
+                            selected
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-card border-input hover:bg-secondary"
+                          }`}
+                        >
+                          <p className="font-semibold text-sm">{opt.label}</p>
+                          <p className={`text-xs ${selected ? "opacity-90" : "text-muted-foreground"}`}>{opt.desc}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="rounded-xl border bg-card p-4 space-y-3">

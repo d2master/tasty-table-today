@@ -27,6 +27,7 @@ interface Restaurant {
   is_open?: boolean;
   closed_message?: string;
   table_count?: number;
+  service_mode?: "both" | "delivery" | "table";
   pix_enabled?: boolean;
   pix_key?: string | null;
   pix_key_type?: "cpf" | "cnpj" | "email" | "phone" | "random" | null;
@@ -145,6 +146,7 @@ export default function PublicMenu() {
         is_open: (rest as { is_open?: boolean }).is_open ?? true,
         closed_message: (rest as { closed_message?: string }).closed_message ?? "",
         table_count: (rest as { table_count?: number }).table_count ?? 0,
+        service_mode: ((rest as { service_mode?: "both" | "delivery" | "table" }).service_mode) ?? "both",
         pix_enabled: rest.pix_enabled,
         pix_key: null,
         pix_key_type: null,
@@ -166,6 +168,13 @@ export default function PublicMenu() {
       setLoading(false);
     })();
   }, [slug]);
+
+  // Force order mode if restaurant only accepts one type
+  useEffect(() => {
+    if (!restaurant?.service_mode) return;
+    if (restaurant.service_mode === "delivery") setOrderMode("delivery");
+    else if (restaurant.service_mode === "table") setOrderMode("table");
+  }, [restaurant?.service_mode]);
 
   // Load active order from localStorage
   useEffect(() => {
@@ -737,27 +746,37 @@ export default function PublicMenu() {
                 <span className="text-primary">R$ {cartTotal.toFixed(2)}</span>
               </div>
 
-              {/* Order mode selector */}
-              <div className="grid grid-cols-2 gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setOrderMode("table")}
-                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-                    orderMode === "table" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
-                  }`}
-                >
-                  <Utensils className="h-4 w-4" /> Mesa
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOrderMode("delivery")}
-                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-                    orderMode === "delivery" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
-                  }`}
-                >
-                  <Bike className="h-4 w-4" /> Delivery
-                </button>
-              </div>
+              {/* Order mode selector — hidden modes when restaurant restricts service */}
+              {restaurant?.service_mode === "both" ? (
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setOrderMode("table")}
+                    className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                      orderMode === "table" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
+                    }`}
+                  >
+                    <Utensils className="h-4 w-4" /> Mesa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderMode("delivery")}
+                    className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                      orderMode === "delivery" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
+                    }`}
+                  >
+                    <Bike className="h-4 w-4" /> Delivery
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2 pt-2 py-2.5 rounded-lg border bg-secondary/40 text-sm font-medium">
+                  {restaurant?.service_mode === "delivery" ? (
+                    <><Bike className="h-4 w-4" /> Apenas Delivery</>
+                  ) : (
+                    <><Utensils className="h-4 w-4" /> Apenas Mesa</>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-3">
                 {orderMode === "table" ? (

@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     // Fetch restaurant
     const { data: restaurant, error: rErr } = await supabase
       .from("restaurants")
-      .select("id, name, slug, is_blocked, is_open, closed_message, table_count, pix_enabled, pix_key, pix_key_type, pix_recipient_name, pix_city")
+      .select("id, name, slug, is_blocked, is_open, closed_message, table_count, service_mode, pix_enabled, pix_key, pix_key_type, pix_recipient_name, pix_city")
       .eq("slug", body.slug)
       .maybeSingle();
 
@@ -61,6 +61,19 @@ Deno.serve(async (req) => {
     }
     if (restaurant.is_open === false) {
       return new Response(JSON.stringify({ error: restaurant.closed_message || "Lanchonete fechada no momento" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const serviceMode = (restaurant as { service_mode?: string }).service_mode ?? "both";
+    if (serviceMode === "delivery" && body.order_type === "table") {
+      return new Response(JSON.stringify({ error: "Esta lanchonete está aceitando apenas pedidos de delivery." }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (serviceMode === "table" && body.order_type === "delivery") {
+      return new Response(JSON.stringify({ error: "Esta lanchonete está aceitando apenas pedidos para mesa." }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
