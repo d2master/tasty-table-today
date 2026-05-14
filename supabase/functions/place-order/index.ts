@@ -65,6 +65,19 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const serviceMode = (restaurant as { service_mode?: string }).service_mode ?? "both";
+    if (serviceMode === "delivery" && body.order_type === "table") {
+      return new Response(JSON.stringify({ error: "Esta lanchonete está aceitando apenas pedidos de delivery." }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (serviceMode === "table" && body.order_type === "delivery") {
+      return new Response(JSON.stringify({ error: "Esta lanchonete está aceitando apenas pedidos para mesa." }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Block check
     if (body.customer_phone) {
