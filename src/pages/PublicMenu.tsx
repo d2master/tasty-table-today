@@ -27,6 +27,7 @@ interface Restaurant {
   is_open?: boolean;
   closed_message?: string;
   table_count?: number;
+  service_mode?: "both" | "delivery" | "table";
   pix_enabled?: boolean;
   pix_key?: string | null;
   pix_key_type?: "cpf" | "cnpj" | "email" | "phone" | "random" | null;
