@@ -290,6 +290,7 @@ export type Database = {
           pix_key_type: string | null
           pix_password: string | null
           pix_recipient_name: string | null
+          service_mode: string
           slug: string
           table_count: number
           trash_password: string | null
@@ -311,6 +312,7 @@ export type Database = {
           pix_key_type?: string | null
           pix_password?: string | null
           pix_recipient_name?: string | null
+          service_mode?: string
           slug: string
           table_count?: number
           trash_password?: string | null
@@ -332,6 +334,7 @@ export type Database = {
           pix_key_type?: string | null
           pix_password?: string | null
           pix_recipient_name?: string | null
+          service_mode?: string
           slug?: string
           table_count?: number
           trash_password?: string | null
@@ -386,6 +389,7 @@ export type Database = {
           pix_city: string
           pix_enabled: boolean
           pix_recipient_name: string
+          service_mode: string
           slug: string
           table_count: number
         }[]
