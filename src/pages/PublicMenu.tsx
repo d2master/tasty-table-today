@@ -146,6 +146,7 @@ export default function PublicMenu() {
         is_open: (rest as { is_open?: boolean }).is_open ?? true,
         closed_message: (rest as { closed_message?: string }).closed_message ?? "",
         table_count: (rest as { table_count?: number }).table_count ?? 0,
+        service_mode: ((rest as { service_mode?: "both" | "delivery" | "table" }).service_mode) ?? "both",
         pix_enabled: rest.pix_enabled,
         pix_key: null,
         pix_key_type: null,
