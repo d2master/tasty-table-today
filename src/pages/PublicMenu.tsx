@@ -746,27 +746,37 @@ export default function PublicMenu() {
                 <span className="text-primary">R$ {cartTotal.toFixed(2)}</span>
               </div>
 
-              {/* Order mode selector */}
-              <div className="grid grid-cols-2 gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setOrderMode("table")}
-                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-                    orderMode === "table" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
-                  }`}
-                >
-                  <Utensils className="h-4 w-4" /> Mesa
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOrderMode("delivery")}
-                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-                    orderMode === "delivery" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
-                  }`}
-                >
-                  <Bike className="h-4 w-4" /> Delivery
-                </button>
-              </div>
+              {/* Order mode selector — hidden modes when restaurant restricts service */}
+              {restaurant?.service_mode === "both" ? (
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setOrderMode("table")}
+                    className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                      orderMode === "table" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
+                    }`}
+                  >
+                    <Utensils className="h-4 w-4" /> Mesa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderMode("delivery")}
+                    className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                      orderMode === "delivery" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
+                    }`}
+                  >
+                    <Bike className="h-4 w-4" /> Delivery
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2 pt-2 py-2.5 rounded-lg border bg-secondary/40 text-sm font-medium">
+                  {restaurant?.service_mode === "delivery" ? (
+                    <><Bike className="h-4 w-4" /> Apenas Delivery</>
+                  ) : (
+                    <><Utensils className="h-4 w-4" /> Apenas Mesa</>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-3">
                 {orderMode === "table" ? (
