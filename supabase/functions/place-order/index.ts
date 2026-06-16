@@ -141,6 +141,91 @@ Deno.serve(async (req) => {
 
     const total = computedItems.reduce((s, i) => s + i.price * i.quantity, 0);
 
+    // ===== APPEND MODE: add items to an existing table order =====
+    if (body.append_to_order_id) {
+      if (body.order_type !== "table") {
+        return new Response(JSON.stringify({ error: "Apenas pedidos de mesa podem receber novos itens." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: existing, error: exErr } = await supabase
+        .from("orders")
+        .select("id, restaurant_id, order_type, status, deleted_at, total")
+        .eq("id", body.append_to_order_id)
+        .maybeSingle();
+      if (exErr || !existing) {
+        return new Response(JSON.stringify({ error: "Pedido não encontrado." }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (existing.restaurant_id !== restaurant.id) {
+        return new Response(JSON.stringify({ error: "Pedido não pertence a esta lanchonete." }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (existing.order_type !== "table") {
+        return new Response(JSON.stringify({ error: "Só é possível adicionar itens em pedidos de mesa." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (existing.deleted_at) {
+        return new Response(JSON.stringify({ error: "Este pedido não está mais ativo." }), {
+          status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!["pending", "preparing", "ready"].includes(existing.status)) {
+        return new Response(JSON.stringify({ error: "Este pedido já foi finalizado ou cancelado." }), {
+          status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(computedItems.map((i) => ({ ...i, order_id: existing.id })));
+      if (itemsError) {
+        console.error("Append items insert error", itemsError);
+        return new Response(JSON.stringify({ error: "Falha ao adicionar itens." }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Decrement stock (same logic as new order)
+      const decrements = new Map<string, number>();
+      for (const it of computedItems) {
+        const p = productMap.get(it.product_id)!;
+        if (p.track_stock) decrements.set(it.product_id, (decrements.get(it.product_id) ?? 0) + it.quantity);
+      }
+      if (decrements.size > 0) {
+        const itemsPayload = Array.from(decrements, ([product_id, quantity]) => ({ product_id, quantity }));
+        const { error: decErr } = await supabase.rpc("decrement_stock_for_order", { _items: itemsPayload });
+        if (decErr) {
+          // Roll back the appended items
+          await supabase.from("order_items").delete().eq("order_id", existing.id).in("product_id", computedItems.map(i => i.product_id));
+          const msg = decErr.message ?? "";
+          const match = msg.match(/INSUFFICIENT_STOCK:(.+?)(?:$|")/);
+          const productName = match ? match[1] : "produto";
+          return new Response(JSON.stringify({ error: `Sem estoque suficiente para "${productName}"` }), {
+            status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      const newTotal = Number(existing.total) + total;
+      await supabase
+        .from("orders")
+        .update({ total: newTotal, updated_at: new Date().toISOString() })
+        .eq("id", existing.id);
+
+      return new Response(JSON.stringify({
+        order_id: existing.id,
+        total: newTotal,
+        pix_copy_paste: null,
+        pix_key: null,
+        appended: true,
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+
     // Validate order type-specific fields
     if (body.order_type === "table") {
       if (!body.table_number) {
