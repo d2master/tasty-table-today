@@ -334,7 +334,40 @@ export default function PublicMenu() {
       return;
     }
 
-    let orderPayload: any = {
+    // ===== Append mode: skip all validation, only need cart =====
+    if (appendMode) {
+      setSubmitting(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("place-order", {
+          body: {
+            slug,
+            order_type: "table",
+            table_number: appendMode.tableNumber,
+            items: cart.map(c => ({ product_id: c.product.id, quantity: c.quantity })),
+            append_to_order_id: appendMode.orderId,
+          },
+        });
+        if (error || !data || (data as { error?: string }).error) {
+          const errMsg = (data as { error?: string })?.error || (error as { message?: string })?.message || "Erro ao adicionar itens.";
+          toast.error(errMsg);
+          setSubmitting(false);
+          return;
+        }
+        toast.success("Itens adicionados ao pedido! 🎉");
+        setCart([]);
+        setAppendMode(null);
+        setShowCart(false);
+        setShowTracker(true);
+      } catch (err) {
+        console.error("Append error:", err);
+        toast.error("Erro inesperado ao adicionar itens");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    let orderPayload: Record<string, unknown> = {
       restaurant_id: restaurant!.id,
       status: "pending",
       total: cartTotal,
@@ -387,6 +420,7 @@ export default function PublicMenu() {
         orderPayload.delivery_address = `${deliveryAddress.trim()}\nObs: ${observation.trim()}`;
       }
     }
+
 
     setSubmitting(true);
     try {
