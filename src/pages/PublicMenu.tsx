@@ -56,6 +56,13 @@ interface OrderStatus {
   updated_at: string;
 }
 
+interface OrderItemPublic {
+  product_name: string;
+  quantity: number;
+  price: number;
+}
+
+
 interface Category {
   id: string;
   name: string;
@@ -116,7 +123,11 @@ export default function PublicMenu() {
   // Active order tracking
   const [activeOrder, setActiveOrder] = useState<ActiveOrderRef | null>(null);
   const [orderStatus, setOrderStatus] = useState<OrderStatus | null>(null);
+  const [orderItems, setOrderItems] = useState<OrderItemPublic[]>([]);
   const [showTracker, setShowTracker] = useState(false);
+  // Append mode: when set, the cart will append items to this existing order
+  const [appendMode, setAppendMode] = useState<{ orderId: string; tableNumber: string } | null>(null);
+
 
   const resetCheckoutState = () => {
     setCart([]);
@@ -216,22 +227,29 @@ export default function PublicMenu() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showCart, orderMode, restaurant?.table_count]);
 
-  // Poll order status every 5s while there's an active order
+  // Poll order status + items every 5s while there's an active order
   useEffect(() => {
     if (!activeOrder) {
       setOrderStatus(null);
+      setOrderItems([]);
       return;
     }
     let cancelled = false;
-    const fetchStatus = async () => {
-      const { data, error } = await supabase.rpc("get_order_status", { _order_id: activeOrder.order_id });
+    const fetchAll = async () => {
+      const [statusRes, itemsRes] = await Promise.all([
+        supabase.rpc("get_order_status", { _order_id: activeOrder.order_id }),
+        supabase.rpc("get_order_items_public", { _order_id: activeOrder.order_id }),
+      ]);
       if (cancelled) return;
-      if (!error && Array.isArray(data) && data.length > 0) {
-        setOrderStatus(data[0] as OrderStatus);
+      if (!statusRes.error && Array.isArray(statusRes.data) && statusRes.data.length > 0) {
+        setOrderStatus(statusRes.data[0] as OrderStatus);
+      }
+      if (!itemsRes.error && Array.isArray(itemsRes.data)) {
+        setOrderItems(itemsRes.data as OrderItemPublic[]);
       }
     };
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 5000);
+    fetchAll();
+    const interval = setInterval(fetchAll, 5000);
     return () => { cancelled = true; clearInterval(interval); };
   }, [activeOrder]);
 
@@ -239,8 +257,28 @@ export default function PublicMenu() {
     if (slug) localStorage.removeItem(`active_order_${slug}`);
     setActiveOrder(null);
     setOrderStatus(null);
+    setOrderItems([]);
     setShowTracker(false);
+    setAppendMode(null);
   };
+
+  const startAppendMode = () => {
+    if (!activeOrder) return;
+    setAppendMode({ orderId: activeOrder.order_id, tableNumber: activeOrder.table_number });
+    setShowTracker(false);
+    setCart([]);
+    toast.info("Escolha os novos itens e abra o carrinho para confirmar");
+  };
+
+
+  const cancelAppendMode = () => {
+    setAppendMode(null);
+    setCart([]);
+    setShowCart(false);
+    if (activeOrder) setShowTracker(true);
+  };
+
+
 
 
   const addToCart = (product: Product) => {
@@ -297,7 +335,41 @@ export default function PublicMenu() {
       return;
     }
 
-    let orderPayload: any = {
+
+    // ===== Append mode: skip all validation, only need cart =====
+    if (appendMode) {
+      setSubmitting(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("place-order", {
+          body: {
+            slug,
+            order_type: "table",
+            table_number: appendMode.tableNumber,
+            items: cart.map(c => ({ product_id: c.product.id, quantity: c.quantity })),
+            append_to_order_id: appendMode.orderId,
+          },
+        });
+        if (error || !data || (data as { error?: string }).error) {
+          const errMsg = (data as { error?: string })?.error || (error as { message?: string })?.message || "Erro ao adicionar itens.";
+          toast.error(errMsg);
+          setSubmitting(false);
+          return;
+        }
+        toast.success("Itens adicionados ao pedido! 🎉");
+        setCart([]);
+        setAppendMode(null);
+        setShowCart(false);
+        setShowTracker(true);
+      } catch (err) {
+        console.error("Append error:", err);
+        toast.error("Erro inesperado ao adicionar itens");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    let orderPayload: Record<string, unknown> = {
       restaurant_id: restaurant!.id,
       status: "pending",
       total: cartTotal,
@@ -350,6 +422,7 @@ export default function PublicMenu() {
         orderPayload.delivery_address = `${deliveryAddress.trim()}\nObs: ${observation.trim()}`;
       }
     }
+
 
     setSubmitting(true);
     try {
@@ -561,15 +634,18 @@ export default function PublicMenu() {
             className="w-full gap-2"
             size="lg"
             onClick={() => setShowCart(true)}
-            disabled={restaurant?.is_open === false}
+            disabled={!appendMode && restaurant?.is_open === false}
           >
             <ShoppingCart className="h-5 w-5" />
-            {restaurant?.is_open === false
+            {!appendMode && restaurant?.is_open === false
               ? "Lanchonete fechada"
-              : `Ver Carrinho (${cartCount}) — R$ ${cartTotal.toFixed(2)}`}
+              : appendMode
+                ? `Adicionar ao pedido (${cartCount}) — R$ ${cartTotal.toFixed(2)}`
+                : `Ver Carrinho (${cartCount}) — R$ ${cartTotal.toFixed(2)}`}
           </Button>
         </div>
       )}
+
 
       {/* Order Tracker Drawer */}
       <AnimatePresence>
@@ -647,6 +723,43 @@ export default function PublicMenu() {
                       </div>
                     )}
 
+                    {/* Items list */}
+                    <div className="rounded-xl border bg-secondary/30 p-3 space-y-2">
+                      <p className="text-sm font-semibold">Itens do pedido</p>
+                      {orderItems.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">Carregando itens...</p>
+                      ) : (
+                        <>
+                          <ul className="space-y-1.5">
+                            {orderItems.map((it, idx) => (
+                              <li key={idx} className="flex items-start justify-between text-sm gap-2">
+                                <span className="flex-1">
+                                  <span className="font-semibold">{it.quantity}×</span> {it.product_name}
+                                </span>
+                                <span className="text-muted-foreground whitespace-nowrap">
+                                  R$ {(Number(it.price) * it.quantity).toFixed(2)}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                          <div className="flex justify-between text-sm font-semibold pt-2 border-t">
+                            <span>Total</span>
+                            <span className="text-primary">
+                              R$ {orderItems.reduce((s, i) => s + Number(i.price) * i.quantity, 0).toFixed(2)}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Add more items: only for table orders, while still active */}
+                    {activeOrder.order_type === "table" &&
+                      ["pending", "preparing", "ready"].includes(status) && (
+                        <Button className="w-full gap-2" onClick={startAppendMode}>
+                          <Plus className="h-4 w-4" /> Adicionar mais itens
+                        </Button>
+                      )}
+
                     {(status === "done" || status === "cancelled") && (
                       <Button variant="outline" className="w-full" onClick={clearActiveOrder}>
                         Fechar acompanhamento
@@ -658,6 +771,7 @@ export default function PublicMenu() {
                         Atualizando automaticamente. Apenas a lanchonete pode finalizar o pedido.
                       </p>
                     )}
+
                   </div>
                 );
               })()}
@@ -684,9 +798,24 @@ export default function PublicMenu() {
               transition={{ type: "spring", damping: 25 }}
             >
               <div className="flex items-center justify-between">
-                <h2 className="font-display text-xl font-bold">{pixPayment ? "Pagamento Pix" : "Seu Pedido"}</h2>
-                <Button variant="ghost" size="sm" onClick={() => pixPayment ? setPixPayment(null) : setShowCart(false)}><X className="h-5 w-5" /></Button>
+                <h2 className="font-display text-xl font-bold">
+                  {pixPayment ? "Pagamento Pix" : appendMode ? "Adicionar ao pedido" : "Seu Pedido"}
+                </h2>
+                <Button variant="ghost" size="sm" onClick={() => pixPayment ? setPixPayment(null) : appendMode ? cancelAppendMode() : setShowCart(false)}><X className="h-5 w-5" /></Button>
               </div>
+
+              {appendMode && !pixPayment && (
+                <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm">
+                  <p className="font-semibold text-primary">
+                    Pedido #{appendMode.orderId.slice(0, 8).toUpperCase()}
+                    {appendMode.tableNumber && <> — Mesa {appendMode.tableNumber}</>}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Os itens abaixo serão adicionados ao seu pedido atual. Itens já enviados não podem ser removidos.
+                  </p>
+                </div>
+              )}
+
 
               {pixPayment ? (
                 <div className="space-y-4">
@@ -746,6 +875,7 @@ export default function PublicMenu() {
                 <span className="text-primary">R$ {cartTotal.toFixed(2)}</span>
               </div>
 
+              {!appendMode && (<>
               {/* Order mode selector — hidden modes when restaurant restricts service */}
               {restaurant?.service_mode === "both" ? (
                 <div className="grid grid-cols-2 gap-2 pt-2">
@@ -930,12 +1060,14 @@ export default function PublicMenu() {
                   </>
                 )}
               </div>
+              </>)}
 
 
               <Button className="w-full gap-2" size="lg" onClick={handleSubmitOrder} disabled={submitting}>
                 <Send className="h-4 w-4" />
-                {submitting ? "Enviando..." : "Finalizar Pedido"}
+                {submitting ? (appendMode ? "Adicionando..." : "Enviando...") : (appendMode ? "Adicionar ao pedido" : "Finalizar Pedido")}
               </Button>
+
               </>}
             </motion.div>
           </motion.div>

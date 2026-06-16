@@ -365,6 +365,14 @@ export type Database = {
           trash_password: string
         }[]
       }
+      get_order_items_public: {
+        Args: { _order_id: string }
+        Returns: {
+          price: number
+          product_name: string
+          quantity: number
+        }[]
+      }
       get_order_status: {
         Args: { _order_id: string }
         Returns: {
