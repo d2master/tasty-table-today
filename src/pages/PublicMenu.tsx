@@ -56,6 +56,13 @@ interface OrderStatus {
   updated_at: string;
 }
 
+interface OrderItemPublic {
+  product_name: string;
+  quantity: number;
+  price: number;
+}
+
+
 interface Category {
   id: string;
   name: string;
