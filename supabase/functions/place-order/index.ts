@@ -19,6 +19,7 @@ const BodySchema = z.object({
   delivery_address: z.string().trim().max(1000).optional().nullable(),
   delivery_maps_url: z.string().trim().max(2000).optional().nullable(),
   items: z.array(ItemSchema).min(1).max(100),
+  append_to_order_id: z.string().uuid().optional(),
 });
 
 Deno.serve(async (req) => {
