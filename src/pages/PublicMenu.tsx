@@ -871,6 +871,7 @@ export default function PublicMenu() {
                 <span className="text-primary">R$ {cartTotal.toFixed(2)}</span>
               </div>
 
+              {!appendMode && (<>
               {/* Order mode selector — hidden modes when restaurant restricts service */}
               {restaurant?.service_mode === "both" ? (
                 <div className="grid grid-cols-2 gap-2 pt-2">
