@@ -633,15 +633,18 @@ export default function PublicMenu() {
             className="w-full gap-2"
             size="lg"
             onClick={() => setShowCart(true)}
-            disabled={restaurant?.is_open === false}
+            disabled={!appendMode && restaurant?.is_open === false}
           >
             <ShoppingCart className="h-5 w-5" />
-            {restaurant?.is_open === false
+            {!appendMode && restaurant?.is_open === false
               ? "Lanchonete fechada"
-              : `Ver Carrinho (${cartCount}) — R$ ${cartTotal.toFixed(2)}`}
+              : appendMode
+                ? `Adicionar ao pedido (${cartCount}) — R$ ${cartTotal.toFixed(2)}`
+                : `Ver Carrinho (${cartCount}) — R$ ${cartTotal.toFixed(2)}`}
           </Button>
         </div>
       )}
+
 
       {/* Order Tracker Drawer */}
       <AnimatePresence>
