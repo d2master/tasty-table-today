@@ -227,22 +227,29 @@ export default function PublicMenu() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showCart, orderMode, restaurant?.table_count]);
 
-  // Poll order status every 5s while there's an active order
+  // Poll order status + items every 5s while there's an active order
   useEffect(() => {
     if (!activeOrder) {
       setOrderStatus(null);
+      setOrderItems([]);
       return;
     }
     let cancelled = false;
-    const fetchStatus = async () => {
-      const { data, error } = await supabase.rpc("get_order_status", { _order_id: activeOrder.order_id });
+    const fetchAll = async () => {
+      const [statusRes, itemsRes] = await Promise.all([
+        supabase.rpc("get_order_status", { _order_id: activeOrder.order_id }),
+        supabase.rpc("get_order_items_public", { _order_id: activeOrder.order_id }),
+      ]);
       if (cancelled) return;
-      if (!error && Array.isArray(data) && data.length > 0) {
-        setOrderStatus(data[0] as OrderStatus);
+      if (!statusRes.error && Array.isArray(statusRes.data) && statusRes.data.length > 0) {
+        setOrderStatus(statusRes.data[0] as OrderStatus);
+      }
+      if (!itemsRes.error && Array.isArray(itemsRes.data)) {
+        setOrderItems(itemsRes.data as OrderItemPublic[]);
       }
     };
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 5000);
+    fetchAll();
+    const interval = setInterval(fetchAll, 5000);
     return () => { cancelled = true; clearInterval(interval); };
   }, [activeOrder]);
 
@@ -250,8 +257,27 @@ export default function PublicMenu() {
     if (slug) localStorage.removeItem(`active_order_${slug}`);
     setActiveOrder(null);
     setOrderStatus(null);
+    setOrderItems([]);
     setShowTracker(false);
+    setAppendMode(null);
   };
+
+  const startAppendMode = () => {
+    if (!activeOrder) return;
+    setAppendMode({ orderId: activeOrder.order_id, tableNumber: activeOrder.table_number });
+    setShowTracker(false);
+    setCart([]);
+    toast.info("Adicione novos itens ao pedido");
+  };
+
+  const cancelAppendMode = () => {
+    setAppendMode(null);
+    setCart([]);
+    setShowCart(false);
+    if (activeOrder) setShowTracker(true);
+  };
+
+
 
 
   const addToCart = (product: Product) => {
