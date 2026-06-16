@@ -267,8 +267,9 @@ export default function PublicMenu() {
     setAppendMode({ orderId: activeOrder.order_id, tableNumber: activeOrder.table_number });
     setShowTracker(false);
     setCart([]);
-    toast.info("Adicione novos itens ao pedido");
+    toast.info("Escolha os novos itens e abra o carrinho para confirmar");
   };
+
 
   const cancelAppendMode = () => {
     setAppendMode(null);
