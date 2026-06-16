@@ -718,6 +718,43 @@ export default function PublicMenu() {
                       </div>
                     )}
 
+                    {/* Items list */}
+                    <div className="rounded-xl border bg-secondary/30 p-3 space-y-2">
+                      <p className="text-sm font-semibold">Itens do pedido</p>
+                      {orderItems.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">Carregando itens...</p>
+                      ) : (
+                        <>
+                          <ul className="space-y-1.5">
+                            {orderItems.map((it, idx) => (
+                              <li key={idx} className="flex items-start justify-between text-sm gap-2">
+                                <span className="flex-1">
+                                  <span className="font-semibold">{it.quantity}×</span> {it.product_name}
+                                </span>
+                                <span className="text-muted-foreground whitespace-nowrap">
+                                  R$ {(Number(it.price) * it.quantity).toFixed(2)}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                          <div className="flex justify-between text-sm font-semibold pt-2 border-t">
+                            <span>Total</span>
+                            <span className="text-primary">
+                              R$ {orderItems.reduce((s, i) => s + Number(i.price) * i.quantity, 0).toFixed(2)}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Add more items: only for table orders, while still active */}
+                    {activeOrder.order_type === "table" &&
+                      ["pending", "preparing", "ready"].includes(status) && (
+                        <Button className="w-full gap-2" onClick={startAppendMode}>
+                          <Plus className="h-4 w-4" /> Adicionar mais itens
+                        </Button>
+                      )}
+
                     {(status === "done" || status === "cancelled") && (
                       <Button variant="outline" className="w-full" onClick={clearActiveOrder}>
                         Fechar acompanhamento
@@ -729,6 +766,7 @@ export default function PublicMenu() {
                         Atualizando automaticamente. Apenas a lanchonete pode finalizar o pedido.
                       </p>
                     )}
+
                   </div>
                 );
               })()}
