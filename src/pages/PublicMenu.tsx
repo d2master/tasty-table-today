@@ -794,9 +794,24 @@ export default function PublicMenu() {
               transition={{ type: "spring", damping: 25 }}
             >
               <div className="flex items-center justify-between">
-                <h2 className="font-display text-xl font-bold">{pixPayment ? "Pagamento Pix" : "Seu Pedido"}</h2>
-                <Button variant="ghost" size="sm" onClick={() => pixPayment ? setPixPayment(null) : setShowCart(false)}><X className="h-5 w-5" /></Button>
+                <h2 className="font-display text-xl font-bold">
+                  {pixPayment ? "Pagamento Pix" : appendMode ? "Adicionar ao pedido" : "Seu Pedido"}
+                </h2>
+                <Button variant="ghost" size="sm" onClick={() => pixPayment ? setPixPayment(null) : appendMode ? cancelAppendMode() : setShowCart(false)}><X className="h-5 w-5" /></Button>
               </div>
+
+              {appendMode && !pixPayment && (
+                <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm">
+                  <p className="font-semibold text-primary">
+                    Pedido #{appendMode.orderId.slice(0, 8).toUpperCase()}
+                    {appendMode.tableNumber && <> — Mesa {appendMode.tableNumber}</>}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Os itens abaixo serão adicionados ao seu pedido atual. Itens já enviados não podem ser removidos.
+                  </p>
+                </div>
+              )}
+
 
               {pixPayment ? (
                 <div className="space-y-4">
