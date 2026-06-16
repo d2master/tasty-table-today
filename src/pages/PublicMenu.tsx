@@ -326,7 +326,7 @@ export default function PublicMenu() {
     e.preventDefault();
     e.stopPropagation();
 
-    if (restaurant && restaurant.is_open === false && !appendMode) {
+    if (restaurant && restaurant.is_open === false) {
       toast.error("Lanchonete fechada no momento");
       return;
     }
