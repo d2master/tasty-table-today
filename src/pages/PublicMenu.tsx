@@ -1056,12 +1056,14 @@ export default function PublicMenu() {
                   </>
                 )}
               </div>
+              </>)}
 
 
               <Button className="w-full gap-2" size="lg" onClick={handleSubmitOrder} disabled={submitting}>
                 <Send className="h-4 w-4" />
-                {submitting ? "Enviando..." : "Finalizar Pedido"}
+                {submitting ? (appendMode ? "Adicionando..." : "Enviando...") : (appendMode ? "Adicionar ao pedido" : "Finalizar Pedido")}
               </Button>
+
               </>}
             </motion.div>
           </motion.div>
