@@ -123,7 +123,11 @@ export default function PublicMenu() {
   // Active order tracking
   const [activeOrder, setActiveOrder] = useState<ActiveOrderRef | null>(null);
   const [orderStatus, setOrderStatus] = useState<OrderStatus | null>(null);
+  const [orderItems, setOrderItems] = useState<OrderItemPublic[]>([]);
   const [showTracker, setShowTracker] = useState(false);
+  // Append mode: when set, the cart will append items to this existing order
+  const [appendMode, setAppendMode] = useState<{ orderId: string; tableNumber: string } | null>(null);
+
 
   const resetCheckoutState = () => {
     setCart([]);
