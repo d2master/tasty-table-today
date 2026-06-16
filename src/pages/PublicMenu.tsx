@@ -326,7 +326,7 @@ export default function PublicMenu() {
     e.preventDefault();
     e.stopPropagation();
 
-    if (restaurant && restaurant.is_open === false) {
+    if (restaurant && restaurant.is_open === false && !appendMode) {
       toast.error("Lanchonete fechada no momento");
       return;
     }
@@ -334,6 +334,7 @@ export default function PublicMenu() {
       toast.error("Carrinho vazio");
       return;
     }
+
 
     // ===== Append mode: skip all validation, only need cart =====
     if (appendMode) {
