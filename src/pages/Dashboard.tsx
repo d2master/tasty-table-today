@@ -944,6 +944,61 @@ export default function Dashboard() {
                 {updatePixSettings.isPending ? "Salvando..." : "Salvar configuração Pix"}
               </Button>
             </div>
+
+            {/* Delivery payment methods */}
+            <div className="rounded-xl border bg-card p-4 space-y-3">
+              <div className="space-y-1">
+                <h3 className="font-semibold">Formas de pagamento no Delivery</h3>
+                <p className="text-xs text-muted-foreground">
+                  Escolha quais opções de pagamento aparecem para o cliente nos pedidos de delivery. Pelo menos uma deve ficar ativa.
+                </p>
+              </div>
+              {(() => {
+                const allMethods: { v: string; l: string }[] = [
+                  { v: "pix", l: "Pix" },
+                  { v: "debito", l: "Cartão de Débito" },
+                  { v: "credito", l: "Cartão de Crédito" },
+                  { v: "dinheiro", l: "Dinheiro" },
+                ];
+                const current: string[] = ((restaurant as any).delivery_payment_methods ?? ["pix","debito","credito","dinheiro"]) as string[];
+                const toggle = async (v: string) => {
+                  const next = current.includes(v) ? current.filter(x => x !== v) : [...current, v];
+                  if (next.length === 0) {
+                    toast.error("Mantenha pelo menos uma forma de pagamento ativa.");
+                    return;
+                  }
+                  try {
+                    await updateDeliveryPaymentMethods.mutateAsync(next);
+                    toast.success("Formas de pagamento atualizadas.");
+                  } catch (err: any) {
+                    toast.error("Não foi possível atualizar as formas de pagamento.");
+                  }
+                };
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {allMethods.map(m => {
+                      const active = current.includes(m.v);
+                      return (
+                        <button
+                          key={m.v}
+                          type="button"
+                          disabled={updateDeliveryPaymentMethods.isPending}
+                          onClick={() => toggle(m.v)}
+                          className={`text-left rounded-lg border p-3 transition-colors ${
+                            active ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
+                          }`}
+                        >
+                          <p className="font-medium text-sm">{m.l}</p>
+                          <p className={`text-xs ${active ? "opacity-90" : "text-muted-foreground"}`}>
+                            {active ? "Ativa" : "Desativada"}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         )}
 
