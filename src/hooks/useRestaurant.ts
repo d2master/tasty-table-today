@@ -66,6 +66,17 @@ export function useRestaurant() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["restaurant"] }),
   });
 
+  const updateDeliveryPaymentMethods = useMutation({
+    mutationFn: async (methods: string[]) => {
+      const { error } = await supabase
+        .from("restaurants")
+        .update({ delivery_payment_methods: methods })
+        .eq("id", restaurantQuery.data!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["restaurant"] }),
+  });
+
   const updateOpenStatus = useMutation({
     mutationFn: async ({ is_open, closed_message }: { is_open: boolean; closed_message?: string }) => {
       const payload: { is_open: boolean; closed_message?: string } = { is_open };
