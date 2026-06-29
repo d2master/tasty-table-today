@@ -150,5 +150,6 @@ export function useRestaurant() {
     updateTableCount,
     updateOpenStatus,
     updateServiceMode,
+    updateDeliveryPaymentMethods,
   };
 }
