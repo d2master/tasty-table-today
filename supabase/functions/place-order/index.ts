@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     // Fetch restaurant
     const { data: restaurant, error: rErr } = await supabase
       .from("restaurants")
-      .select("id, name, slug, is_blocked, is_open, closed_message, table_count, service_mode, pix_enabled, pix_key, pix_key_type, pix_recipient_name, pix_city")
+      .select("id, name, slug, is_blocked, is_open, closed_message, table_count, service_mode, delivery_payment_methods, pix_enabled, pix_key, pix_key_type, pix_recipient_name, pix_city")
       .eq("slug", body.slug)
       .maybeSingle();
 
