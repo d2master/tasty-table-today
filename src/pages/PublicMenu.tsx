@@ -33,6 +33,7 @@ interface Restaurant {
   pix_key_type?: "cpf" | "cnpj" | "email" | "phone" | "random" | null;
   pix_recipient_name?: string | null;
   pix_city?: string | null;
+  delivery_payment_methods?: string[];
 }
 
 interface TableInfo {
