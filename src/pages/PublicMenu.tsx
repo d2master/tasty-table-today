@@ -33,6 +33,7 @@ interface Restaurant {
   pix_key_type?: "cpf" | "cnpj" | "email" | "phone" | "random" | null;
   pix_recipient_name?: string | null;
   pix_city?: string | null;
+  delivery_payment_methods?: string[];
 }
 
 interface TableInfo {
@@ -163,6 +164,7 @@ export default function PublicMenu() {
         pix_key_type: null,
         pix_recipient_name: rest.pix_recipient_name,
         pix_city: rest.pix_city,
+        delivery_payment_methods: ((rest as { delivery_payment_methods?: string[] }).delivery_payment_methods) ?? ["pix","debito","credito","dinheiro"],
       });
       if (rest.is_blocked) { setLoading(false); return; }
 
@@ -990,23 +992,31 @@ export default function PublicMenu() {
                     <div className="space-y-1">
                       <Label>Forma de pagamento <span className="text-destructive">*</span></Label>
                       <div className="grid grid-cols-2 gap-2">
-                        {([
-                          { v: "pix", l: "Pix" },
-                          { v: "debito", l: "Débito" },
-                          { v: "credito", l: "Crédito" },
-                          { v: "dinheiro", l: "Dinheiro" },
-                        ] as { v: PaymentMethod; l: string }[]).map(opt => (
-                          <button
-                            key={opt.v}
-                            type="button"
-                            onClick={() => setPaymentMethod(opt.v)}
-                            className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
-                              paymentMethod === opt.v ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
-                            }`}
-                          >
-                            {opt.l}
-                          </button>
-                        ))}
+                        {(() => {
+                          const allowed = restaurant?.delivery_payment_methods ?? ["pix","debito","credito","dinheiro"];
+                          const all: { v: PaymentMethod; l: string }[] = [
+                            { v: "pix", l: "Pix" },
+                            { v: "debito", l: "Débito" },
+                            { v: "credito", l: "Crédito" },
+                            { v: "dinheiro", l: "Dinheiro" },
+                          ];
+                          const opts = all.filter(o => allowed.includes(o.v));
+                          if (opts.length === 0) {
+                            return <p className="text-sm text-muted-foreground">Nenhuma forma de pagamento disponível no momento.</p>;
+                          }
+                          return opts.map(opt => (
+                            <button
+                              key={opt.v}
+                              type="button"
+                              onClick={() => setPaymentMethod(opt.v)}
+                              className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
+                                paymentMethod === opt.v ? "bg-primary text-primary-foreground border-primary" : "bg-card border-input hover:bg-secondary"
+                              }`}
+                            >
+                              {opt.l}
+                            </button>
+                          ));
+                        })()}
                       </div>
                     </div>
 

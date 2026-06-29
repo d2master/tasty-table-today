@@ -277,6 +277,7 @@ export type Database = {
         Row: {
           closed_message: string
           created_at: string
+          delivery_payment_methods: string[]
           description: string | null
           id: string
           is_blocked: boolean
@@ -299,6 +300,7 @@ export type Database = {
         Insert: {
           closed_message?: string
           created_at?: string
+          delivery_payment_methods?: string[]
           description?: string | null
           id?: string
           is_blocked?: boolean
@@ -321,6 +323,7 @@ export type Database = {
         Update: {
           closed_message?: string
           created_at?: string
+          delivery_payment_methods?: string[]
           description?: string | null
           id?: string
           is_blocked?: boolean
@@ -388,6 +391,7 @@ export type Database = {
         Args: { _slug: string }
         Returns: {
           closed_message: string
+          delivery_payment_methods: string[]
           description: string
           id: string
           is_blocked: boolean

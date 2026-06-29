@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     // Fetch restaurant
     const { data: restaurant, error: rErr } = await supabase
       .from("restaurants")
-      .select("id, name, slug, is_blocked, is_open, closed_message, table_count, service_mode, pix_enabled, pix_key, pix_key_type, pix_recipient_name, pix_city")
+      .select("id, name, slug, is_blocked, is_open, closed_message, table_count, service_mode, delivery_payment_methods, pix_enabled, pix_key, pix_key_type, pix_recipient_name, pix_city")
       .eq("slug", body.slug)
       .maybeSingle();
 
@@ -259,6 +259,13 @@ Deno.serve(async (req) => {
     if (body.order_type === "delivery") {
       if (!body.customer_name || !body.customer_phone || !body.payment_method) {
         return new Response(JSON.stringify({ error: "Missing delivery fields" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const allowedMethods = ((restaurant as { delivery_payment_methods?: string[] }).delivery_payment_methods)
+        ?? ["pix","debito","credito","dinheiro"];
+      if (!allowedMethods.includes(body.payment_method)) {
+        return new Response(JSON.stringify({ error: "Forma de pagamento indisponível para esta lanchonete." }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
