@@ -1,0 +1,1 @@
+GRANT UPDATE (delivery_payment_methods) ON public.restaurants TO authenticated;
