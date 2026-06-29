@@ -164,6 +164,7 @@ export default function PublicMenu() {
         pix_key_type: null,
         pix_recipient_name: rest.pix_recipient_name,
         pix_city: rest.pix_city,
+        delivery_payment_methods: ((rest as { delivery_payment_methods?: string[] }).delivery_payment_methods) ?? ["pix","debito","credito","dinheiro"],
       });
       if (rest.is_blocked) { setLoading(false); return; }
 
