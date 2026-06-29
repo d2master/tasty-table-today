@@ -23,7 +23,7 @@ export function useRestaurant() {
       console.log("[useRestaurant] querying for user", user.id);
       const { data: base, error } = await supabase
         .from("restaurants")
-        .select("id, name, slug, description, logo_url, is_blocked, table_count, pix_enabled, pix_recipient_name, pix_city, is_open, closed_message, service_mode, created_at, updated_at, owner_id")
+        .select("id, name, slug, description, logo_url, is_blocked, table_count, pix_enabled, pix_recipient_name, pix_city, is_open, closed_message, service_mode, delivery_payment_methods, created_at, updated_at, owner_id")
         .eq("owner_id", user.id)
         .maybeSingle();
       console.log("[useRestaurant] result", { base, error });
