@@ -262,6 +262,13 @@ Deno.serve(async (req) => {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      const allowedMethods = ((restaurant as { delivery_payment_methods?: string[] }).delivery_payment_methods)
+        ?? ["pix","debito","credito","dinheiro"];
+      if (!allowedMethods.includes(body.payment_method)) {
+        return new Response(JSON.stringify({ error: "Forma de pagamento indisponível para esta lanchonete." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const orderId = crypto.randomUUID();
