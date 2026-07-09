@@ -1,44 +1,45 @@
-# Acompanhamento de pedido com itens + adicionar mais (mesa)
+## Objetivo
+Permitir que clientes de pedidos em **mesa** escolham adicionar 10% de gorjeta do garçom sobre o total do pedido. Delivery não terá essa opção.
 
-Hoje a tela de acompanhamento mostra só o status. Vamos exibir também a lista do que foi pedido e, no caso de pedido na mesa, permitir adicionar mais itens ao mesmo pedido (sem remover o que já foi pedido). No delivery, fica só leitura.
+## Comportamento
+- No checkout de mesa, mostrar um toggle "Adicionar 10% do garçom" com o valor calculado exibido.
+- Total exibido atualiza dinamicamente (subtotal + 10% se marcado).
+- O valor da gorjeta é registrado no pedido e visível no dashboard da lanchonete e na tela de acompanhamento do cliente.
+- Ao adicionar mais itens em um pedido de mesa existente (append), a gorjeta é recalculada sobre o novo subtotal se o pedido original tinha gorjeta ativa.
+- Delivery: sem alteração — nenhuma opção de gorjeta aparece.
 
-## O que muda
+## Alterações
 
-### 1. Banco — nova função pública para listar itens
-Criar RPC `get_order_items_public(_order_id uuid)` (SECURITY DEFINER) que devolve `product_name`, `quantity`, `price` do pedido. Hoje as policies de `order_items` só liberam leitura ao dono do restaurante; o cliente anônimo precisa dessa função para ver o que pediu.
+### Banco (migration)
+- `orders`: adicionar
+  - `tip_enabled boolean NOT NULL DEFAULT false`
+  - `tip_amount numeric(10,2) NOT NULL DEFAULT 0`
+- `total` continua sendo o valor final cobrado (subtotal + gorjeta), para não quebrar relatórios existentes.
+- Atualizar `get_order_status` (RPC) para retornar `tip_enabled` e `tip_amount`.
 
-### 2. Edge function `place-order` — modo "anexar itens"
-Aceitar um campo opcional `append_to_order_id`. Quando vier:
-- Carrega o pedido existente, valida que pertence ao mesmo restaurante (pelo slug), que `order_type = 'table'`, que `deleted_at IS NULL` e que `status` é `pending`, `preparing` ou `ready`.
-- Pula a checagem de mesa ocupada (a mesa já é desse pedido).
-- Insere os novos `order_items` com o mesmo `order_id`, chama `decrement_stock_for_order` normalmente.
-- Atualiza `orders.total = total + valor_dos_novos_itens` e `updated_at = now()`.
-- Não gera novo Pix nem cria pedido novo. Retorna `{ order_id, total }` (o já existente, agora com novo total).
+### Edge function `place-order`
+- Aceitar `tip_enabled: boolean` no schema Zod (opcional, default false).
+- Só considerar `tip_enabled=true` quando `order_type === "table"`; ignorar em delivery.
+- Calcular `subtotal = soma(items)`, `tip_amount = tip_enabled ? round(subtotal * 0.10, 2) : 0`, `total = subtotal + tip_amount`.
+- Recalcular Pix payload com `total` incluindo gorjeta.
+- Modo append: se o pedido existente tinha `tip_enabled=true`, recalcular gorjeta sobre o novo subtotal completo e atualizar `tip_amount` + `total`.
 
-Pedidos de delivery NÃO podem usar `append_to_order_id` — retorna erro.
+### Frontend
 
-### 3. `PublicMenu.tsx` — tela de acompanhamento
-Dentro do drawer "Seu pedido", além do progresso atual:
-- Buscar itens via `get_order_items_public` ao abrir e a cada poll de status (mesmo intervalo de 5s).
-- Listar cada item com `quantidade × nome — R$ preço` e mostrar o `total` do pedido.
-- **Pedido de mesa**, enquanto status estiver em `pending` / `preparing` / `ready`:
-  - Botão **"Adicionar mais itens"** que fecha o tracker e volta ao cardápio em modo "anexar" (uma flag `appendMode` com o `order_id` alvo).
-  - No carrinho, quando em `appendMode`: o cabeçalho vira "Adicionar ao pedido #XXXX — Mesa Y", esconde formulário de nome/mesa/observação/pagamento, e o botão de enviar chama `place-order` com `append_to_order_id`. Após sucesso, limpa o carrinho, sai do `appendMode` e reabre o tracker (que já vai recarregar itens).
-  - Nenhum botão de remover itens já enviados (apenas leitura para o que existe).
-- **Pedido de delivery**: lista de itens visível, sem botão de adicionar.
-- Quando `status` é `done` ou `cancelled`: esconder botão de adicionar.
+**`src/pages/PublicMenu.tsx`**
+- No drawer de checkout, quando `order_type === "table"`, mostrar bloco:
+  - Checkbox "Adicionar 10% do garçom (opcional)"
+  - Linhas: Subtotal, 10% garçom (se marcado), Total
+- Enviar `tip_enabled` para o edge function.
+- Drawer de acompanhamento: exibir "10% garçom: R$ X,XX" quando aplicável, além do total.
+
+**`src/pages/Dashboard.tsx`**
+- Nos cards/listas de pedidos, quando `tip_amount > 0`, exibir uma linha "10% garçom: R$ X,XX" junto ao total.
+
+**`src/hooks/useOrders.ts`**
+- Adicionar `tip_enabled` e `tip_amount` ao tipo `Order`.
 
 ## Detalhes técnicos
-
-- A RPC nova é `STABLE SECURITY DEFINER SET search_path = public`, retorna apenas campos não sensíveis (`product_name`, `quantity`, `price`).
-- O insert dos novos `order_items` continua sendo feito pela edge function com `service_role`, mantendo a regra do projeto de não usar `.select()` após insert em fluxo público.
-- `appendMode` é estado local em `PublicMenu` (`{ orderId: string; tableNumber: string } | null`); não persistir em localStorage (se o cliente recarregar, simplesmente volta ao tracker normal).
-- Validação no front: antes de mostrar o botão "Adicionar mais itens", checar `activeOrder.order_type === 'table'` e que `orderStatus.status` ∈ {pending, preparing, ready}.
-- A edge function precisa rejeitar com mensagem clara se o pedido alvo for de delivery, estiver finalizado/cancelado, deletado, ou pertencer a outro restaurante.
-
-## Arquivos afetados
-
-- Migração nova: cria `get_order_items_public`.
-- `supabase/functions/place-order/index.ts`: suporte a `append_to_order_id`.
-- `src/pages/PublicMenu.tsx`: fetch dos itens, render no tracker, modo "anexar" no carrinho, botão de adicionar mais.
-- `src/integrations/supabase/types.ts`: regenerado após a migração.
+- Arredondamento: `Math.round(subtotal * 10) / 100` no servidor (fonte da verdade). Cliente só exibe estimativa.
+- Não confiar em valor de gorjeta enviado pelo cliente — sempre recalcular no edge function.
+- Pedidos antigos (sem gorjeta) permanecem com `tip_enabled=false` e `tip_amount=0` via default.
