@@ -144,6 +144,7 @@ export default function PublicMenu() {
     setPaymentMethod("");
     setDeliveryAddress("");
     setDeliveryMapsUrl("");
+    setTipEnabled(false);
   };
 
   useEffect(() => {
