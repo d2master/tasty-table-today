@@ -109,6 +109,7 @@ export default function PublicMenu() {
   const [customerName, setCustomerName] = useState("");
   const [tableNumber, setTableNumber] = useState("");
   const [observation, setObservation] = useState("");
+  const [tipEnabled, setTipEnabled] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
