@@ -219,15 +219,22 @@ Deno.serve(async (req) => {
         }
       }
 
-      const newTotal = Number(existing.total) + total;
+      // Recompute tip on the new full subtotal if the original order had tip enabled.
+      const originalTipEnabled = Boolean((existing as { tip_enabled?: boolean }).tip_enabled);
+      const previousTip = Number((existing as { tip_amount?: number }).tip_amount ?? 0);
+      const previousSubtotal = Number(existing.total) - previousTip;
+      const newSubtotal = previousSubtotal + subtotal;
+      const newTip = originalTipEnabled ? Math.round(newSubtotal * 10) / 100 : 0;
+      const newTotal = newSubtotal + newTip;
       await supabase
         .from("orders")
-        .update({ total: newTotal, updated_at: new Date().toISOString() })
+        .update({ total: newTotal, tip_amount: newTip, updated_at: new Date().toISOString() })
         .eq("id", existing.id);
 
       return new Response(JSON.stringify({
         order_id: existing.id,
         total: newTotal,
+        tip_amount: newTip,
         pix_copy_paste: null,
         pix_key: null,
         appended: true,
