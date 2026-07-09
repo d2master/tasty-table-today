@@ -447,6 +447,7 @@ export default function PublicMenu() {
           delivery_address: orderPayload.delivery_address ?? null,
           delivery_maps_url: orderPayload.delivery_maps_url ?? null,
           items: cart.map(c => ({ product_id: c.product.id, quantity: c.quantity })),
+          tip_enabled: orderMode === "table" ? tipEnabled : false,
         },
       });
 
