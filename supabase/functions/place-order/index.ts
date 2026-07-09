@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
       }
       const { data: existing, error: exErr } = await supabase
         .from("orders")
-        .select("id, restaurant_id, order_type, status, deleted_at, total")
+        .select("id, restaurant_id, order_type, status, deleted_at, total, tip_enabled, tip_amount")
         .eq("id", body.append_to_order_id)
         .maybeSingle();
       if (exErr || !existing) {
