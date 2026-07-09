@@ -753,12 +753,32 @@ export default function PublicMenu() {
                               </li>
                             ))}
                           </ul>
-                          <div className="flex justify-between text-sm font-semibold pt-2 border-t">
-                            <span>Total</span>
-                            <span className="text-primary">
-                              R$ {orderItems.reduce((s, i) => s + Number(i.price) * i.quantity, 0).toFixed(2)}
-                            </span>
-                          </div>
+                          {(() => {
+                            const itemsSubtotal = orderItems.reduce((s, i) => s + Number(i.price) * i.quantity, 0);
+                            const showTip = Boolean(orderStatus?.tip_enabled) && Number(orderStatus?.tip_amount ?? 0) > 0;
+                            const tip = Number(orderStatus?.tip_amount ?? 0);
+                            const totalDisplay = Number(orderStatus?.total ?? (itemsSubtotal + tip));
+                            return (
+                              <>
+                                {showTip && (
+                                  <>
+                                    <div className="flex justify-between text-sm pt-2 border-t">
+                                      <span className="text-muted-foreground">Subtotal</span>
+                                      <span>R$ {itemsSubtotal.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">10% garçom</span>
+                                      <span>R$ {tip.toFixed(2)}</span>
+                                    </div>
+                                  </>
+                                )}
+                                <div className={`flex justify-between text-sm font-semibold ${showTip ? "" : "pt-2 border-t"}`}>
+                                  <span>Total</span>
+                                  <span className="text-primary">R$ {totalDisplay.toFixed(2)}</span>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </>
                       )}
                     </div>
