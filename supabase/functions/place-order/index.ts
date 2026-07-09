@@ -376,6 +376,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       order_id: orderId,
       total,
+      tip_amount: tipAmount,
       pix_copy_paste: pixCopyPaste,
       pix_key: pixKeyForDisplay,
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
