@@ -146,7 +146,9 @@ Deno.serve(async (req) => {
       };
     });
 
-    const total = computedItems.reduce((s, i) => s + i.price * i.quantity, 0);
+    const subtotal = computedItems.reduce((s, i) => s + i.price * i.quantity, 0);
+    const tipAmount = computeTip(subtotal, body.tip_enabled, body.order_type);
+    const total = subtotal + tipAmount;
 
     // ===== APPEND MODE: add items to an existing table order =====
     if (body.append_to_order_id) {
