@@ -20,7 +20,14 @@ const BodySchema = z.object({
   delivery_maps_url: z.string().trim().max(2000).optional().nullable(),
   items: z.array(ItemSchema).min(1).max(100),
   append_to_order_id: z.string().uuid().optional(),
+  tip_enabled: z.boolean().optional().default(false),
 });
+
+// Waiter tip = 10% of subtotal, rounded to 2 decimals. Table orders only.
+const computeTip = (subtotal: number, enabled: boolean, orderType: string) => {
+  if (!enabled || orderType !== "table") return 0;
+  return Math.round(subtotal * 10) / 100;
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
