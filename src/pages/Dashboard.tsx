@@ -610,6 +610,11 @@ export default function Dashboard() {
             {statusLabels[order.status]?.label}
           </Badge>
           <span className="font-display font-bold text-lg">R$ {Number(order.total).toFixed(2)}</span>
+          {order.tip_enabled && Number(order.tip_amount ?? 0) > 0 && (
+            <span className="text-xs text-muted-foreground">
+              inclui 10% garçom (R$ {Number(order.tip_amount).toFixed(2)})
+            </span>
+          )}
         </div>
       </div>
 

@@ -149,6 +149,8 @@ export type Database = {
           restaurant_id: string
           status: string
           table_number: string
+          tip_amount: number
+          tip_enabled: boolean
           total: number
           updated_at: string
         }
@@ -170,6 +172,8 @@ export type Database = {
           restaurant_id: string
           status?: string
           table_number?: string
+          tip_amount?: number
+          tip_enabled?: boolean
           total?: number
           updated_at?: string
         }
@@ -191,6 +195,8 @@ export type Database = {
           restaurant_id?: string
           status?: string
           table_number?: string
+          tip_amount?: number
+          tip_enabled?: boolean
           total?: number
           updated_at?: string
         }
@@ -384,6 +390,9 @@ export type Database = {
           payment_status: string
           status: string
           table_number: string
+          tip_amount: number
+          tip_enabled: boolean
+          total: number
           updated_at: string
         }[]
       }

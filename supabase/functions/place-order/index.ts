@@ -20,7 +20,14 @@ const BodySchema = z.object({
   delivery_maps_url: z.string().trim().max(2000).optional().nullable(),
   items: z.array(ItemSchema).min(1).max(100),
   append_to_order_id: z.string().uuid().optional(),
+  tip_enabled: z.boolean().optional().default(false),
 });
+
+// Waiter tip = 10% of subtotal, rounded to 2 decimals. Table orders only.
+const computeTip = (subtotal: number, enabled: boolean, orderType: string) => {
+  if (!enabled || orderType !== "table") return 0;
+  return Math.round(subtotal * 10) / 100;
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -139,7 +146,9 @@ Deno.serve(async (req) => {
       };
     });
 
-    const total = computedItems.reduce((s, i) => s + i.price * i.quantity, 0);
+    const subtotal = computedItems.reduce((s, i) => s + i.price * i.quantity, 0);
+    const tipAmount = computeTip(subtotal, body.tip_enabled, body.order_type);
+    const total = subtotal + tipAmount;
 
     // ===== APPEND MODE: add items to an existing table order =====
     if (body.append_to_order_id) {
@@ -150,7 +159,7 @@ Deno.serve(async (req) => {
       }
       const { data: existing, error: exErr } = await supabase
         .from("orders")
-        .select("id, restaurant_id, order_type, status, deleted_at, total")
+        .select("id, restaurant_id, order_type, status, deleted_at, total, tip_enabled, tip_amount")
         .eq("id", body.append_to_order_id)
         .maybeSingle();
       if (exErr || !existing) {
@@ -210,15 +219,22 @@ Deno.serve(async (req) => {
         }
       }
 
-      const newTotal = Number(existing.total) + total;
+      // Recompute tip on the new full subtotal if the original order had tip enabled.
+      const originalTipEnabled = Boolean((existing as { tip_enabled?: boolean }).tip_enabled);
+      const previousTip = Number((existing as { tip_amount?: number }).tip_amount ?? 0);
+      const previousSubtotal = Number(existing.total) - previousTip;
+      const newSubtotal = previousSubtotal + subtotal;
+      const newTip = originalTipEnabled ? Math.round(newSubtotal * 10) / 100 : 0;
+      const newTotal = newSubtotal + newTip;
       await supabase
         .from("orders")
-        .update({ total: newTotal, updated_at: new Date().toISOString() })
+        .update({ total: newTotal, tip_amount: newTip, updated_at: new Date().toISOString() })
         .eq("id", existing.id);
 
       return new Response(JSON.stringify({
         order_id: existing.id,
         total: newTotal,
+        tip_amount: newTip,
         pix_copy_paste: null,
         pix_key: null,
         appended: true,
@@ -308,6 +324,8 @@ Deno.serve(async (req) => {
       delivery_maps_url: body.delivery_maps_url ?? null,
       payment_status: body.payment_method === "pix" ? "awaiting_pix" : "pending",
       pix_copy_paste: pixCopyPaste,
+      tip_enabled: body.tip_enabled && body.order_type === "table",
+      tip_amount: tipAmount,
     };
 
     const { error: orderError } = await supabase.from("orders").insert(orderRow);
@@ -358,6 +376,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       order_id: orderId,
       total,
+      tip_amount: tipAmount,
       pix_copy_paste: pixCopyPaste,
       pix_key: pixKeyForDisplay,
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });

@@ -55,6 +55,9 @@ interface OrderStatus {
   order_type: string;
   created_at: string;
   updated_at: string;
+  tip_enabled?: boolean;
+  tip_amount?: number;
+  total?: number;
 }
 
 interface OrderItemPublic {
@@ -106,6 +109,7 @@ export default function PublicMenu() {
   const [customerName, setCustomerName] = useState("");
   const [tableNumber, setTableNumber] = useState("");
   const [observation, setObservation] = useState("");
+  const [tipEnabled, setTipEnabled] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
@@ -140,6 +144,7 @@ export default function PublicMenu() {
     setPaymentMethod("");
     setDeliveryAddress("");
     setDeliveryMapsUrl("");
+    setTipEnabled(false);
   };
 
   useEffect(() => {
@@ -311,6 +316,9 @@ export default function PublicMenu() {
 
   const cartTotal = cart.reduce((sum, c) => sum + c.quantity * effectivePrice(c.product), 0);
   const cartCount = cart.reduce((sum, c) => sum + c.quantity, 0);
+  const tipApplies = orderMode === "table" && tipEnabled && !appendMode;
+  const tipAmount = tipApplies ? Math.round(cartTotal * 10) / 100 : 0;
+  const cartTotalWithTip = cartTotal + tipAmount;
 
   const tableSchema = z.object({
     tableNumber: z.string().trim().min(1, "Informe o número da mesa").max(20),
@@ -439,6 +447,7 @@ export default function PublicMenu() {
           delivery_address: orderPayload.delivery_address ?? null,
           delivery_maps_url: orderPayload.delivery_maps_url ?? null,
           items: cart.map(c => ({ product_id: c.product.id, quantity: c.quantity })),
+          tip_enabled: orderMode === "table" ? tipEnabled : false,
         },
       });
 
@@ -744,12 +753,32 @@ export default function PublicMenu() {
                               </li>
                             ))}
                           </ul>
-                          <div className="flex justify-between text-sm font-semibold pt-2 border-t">
-                            <span>Total</span>
-                            <span className="text-primary">
-                              R$ {orderItems.reduce((s, i) => s + Number(i.price) * i.quantity, 0).toFixed(2)}
-                            </span>
-                          </div>
+                          {(() => {
+                            const itemsSubtotal = orderItems.reduce((s, i) => s + Number(i.price) * i.quantity, 0);
+                            const showTip = Boolean(orderStatus?.tip_enabled) && Number(orderStatus?.tip_amount ?? 0) > 0;
+                            const tip = Number(orderStatus?.tip_amount ?? 0);
+                            const totalDisplay = Number(orderStatus?.total ?? (itemsSubtotal + tip));
+                            return (
+                              <>
+                                {showTip && (
+                                  <>
+                                    <div className="flex justify-between text-sm pt-2 border-t">
+                                      <span className="text-muted-foreground">Subtotal</span>
+                                      <span>R$ {itemsSubtotal.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">10% garçom</span>
+                                      <span>R$ {tip.toFixed(2)}</span>
+                                    </div>
+                                  </>
+                                )}
+                                <div className={`flex justify-between text-sm font-semibold ${showTip ? "" : "pt-2 border-t"}`}>
+                                  <span>Total</span>
+                                  <span className="text-primary">R$ {totalDisplay.toFixed(2)}</span>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </>
                       )}
                     </div>
@@ -872,10 +901,47 @@ export default function PublicMenu() {
                 </div>
               ))}
 
+              {orderMode === "table" && !appendMode && (
+                <div className="pt-2 rounded-lg border bg-secondary/30 p-3">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={tipEnabled}
+                      onChange={(e) => setTipEnabled(e.target.checked)}
+                      className="mt-1 h-4 w-4 accent-primary"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">Adicionar 10% do garçom</span>
+                        <span className="text-sm font-semibold text-primary">
+                          + R$ {(Math.round(cartTotal * 10) / 100).toFixed(2)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Opcional. Aplicado sobre o total dos itens.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              )}
+
+              {tipApplies && (
+                <div className="flex justify-between text-sm pt-1">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>R$ {cartTotal.toFixed(2)}</span>
+                </div>
+              )}
+              {tipApplies && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">10% garçom</span>
+                  <span>R$ {tipAmount.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-display font-bold text-lg pt-2">
                 <span>Total</span>
-                <span className="text-primary">R$ {cartTotal.toFixed(2)}</span>
+                <span className="text-primary">R$ {cartTotalWithTip.toFixed(2)}</span>
               </div>
+
 
               {!appendMode && (<>
               {/* Order mode selector — hidden modes when restaurant restricts service */}

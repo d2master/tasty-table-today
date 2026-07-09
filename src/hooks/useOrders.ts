@@ -25,6 +25,8 @@ export interface Order {
   payment_status?: "pending" | "awaiting_pix" | "paid" | "failed";
   pix_copy_paste?: string | null;
   pix_paid_at?: string | null;
+  tip_enabled?: boolean;
+  tip_amount?: number;
 }
 
 export interface OrderItem {
