@@ -55,6 +55,9 @@ interface OrderStatus {
   order_type: string;
   created_at: string;
   updated_at: string;
+  tip_enabled?: boolean;
+  tip_amount?: number;
+  total?: number;
 }
 
 interface OrderItemPublic {
