@@ -324,6 +324,8 @@ Deno.serve(async (req) => {
       delivery_maps_url: body.delivery_maps_url ?? null,
       payment_status: body.payment_method === "pix" ? "awaiting_pix" : "pending",
       pix_copy_paste: pixCopyPaste,
+      tip_enabled: body.tip_enabled && body.order_type === "table",
+      tip_amount: tipAmount,
     };
 
     const { error: orderError } = await supabase.from("orders").insert(orderRow);
