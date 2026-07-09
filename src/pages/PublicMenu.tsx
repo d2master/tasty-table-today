@@ -881,10 +881,47 @@ export default function PublicMenu() {
                 </div>
               ))}
 
+              {orderMode === "table" && !appendMode && (
+                <div className="pt-2 rounded-lg border bg-secondary/30 p-3">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={tipEnabled}
+                      onChange={(e) => setTipEnabled(e.target.checked)}
+                      className="mt-1 h-4 w-4 accent-primary"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">Adicionar 10% do garçom</span>
+                        <span className="text-sm font-semibold text-primary">
+                          + R$ {(Math.round(cartTotal * 10) / 100).toFixed(2)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Opcional. Aplicado sobre o total dos itens.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              )}
+
+              {tipApplies && (
+                <div className="flex justify-between text-sm pt-1">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>R$ {cartTotal.toFixed(2)}</span>
+                </div>
+              )}
+              {tipApplies && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">10% garçom</span>
+                  <span>R$ {tipAmount.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-display font-bold text-lg pt-2">
                 <span>Total</span>
-                <span className="text-primary">R$ {cartTotal.toFixed(2)}</span>
+                <span className="text-primary">R$ {cartTotalWithTip.toFixed(2)}</span>
               </div>
+
 
               {!appendMode && (<>
               {/* Order mode selector — hidden modes when restaurant restricts service */}
