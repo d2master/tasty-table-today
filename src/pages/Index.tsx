@@ -44,7 +44,7 @@ const Index = () => {
               Seu cardápio digital <span className="text-primary">pronto em minutos</span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-lg">
-              Crie o cardápio online da sua lanchonete, receba pedidos em tempo real
+              Crie o cardápio online do seu restaurante, lanchonete e delivery, receba pedidos em tempo real
               e gerencie tudo pelo painel administrativo.
             </p>
             <div className="flex flex-wrap gap-3">
