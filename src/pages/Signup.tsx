@@ -10,6 +10,8 @@ import { generateSlug } from "@/lib/supabase-helpers";
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [storeName, setStoreName] = useState("");
   const [trashPassword, setTrashPassword] = useState("");
   const [pixPassword, setPixPassword] = useState("");
@@ -28,6 +30,15 @@ export default function SignupPage() {
     }
     if (!/^\d{6}$/.test(pixPassword)) {
       toast.error("A senha do Pix deve ter exatamente 6 dígitos numéricos");
+      return;
+    }
+    const phoneDigits = phone.replace(/\D/g, "");
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+      toast.error("Informe um número de celular válido com DDD");
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.error("As senhas não coincidem");
       return;
     }
     setLoading(true);
@@ -53,6 +64,7 @@ export default function SignupPage() {
         owner_id: authData.user.id,
         trash_password: trashPassword,
         pix_password: pixPassword,
+        owner_phone: phoneDigits,
       });
 
       if (restaurantError) {
@@ -93,8 +105,16 @@ export default function SignupPage() {
             <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="seu@email.com" />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="phone">Celular (com DDD)</Label>
+            <Input id="phone" type="tel" inputMode="numeric" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))} required placeholder="11999999999" />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="password">Senha</Label>
             <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} placeholder="Mínimo 6 caracteres" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Repetir Senha</Label>
+            <Input id="confirmPassword" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={6} placeholder="Repita a senha" />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Criando..." : "Criar Conta"}

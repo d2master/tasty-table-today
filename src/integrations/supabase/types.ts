@@ -291,6 +291,7 @@ export type Database = {
           logo_url: string | null
           name: string
           owner_id: string
+          owner_phone: string | null
           pix_city: string | null
           pix_enabled: boolean
           pix_key: string | null
@@ -314,6 +315,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           owner_id: string
+          owner_phone?: string | null
           pix_city?: string | null
           pix_enabled?: boolean
           pix_key?: string | null
@@ -337,6 +339,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           owner_id?: string
+          owner_phone?: string | null
           pix_city?: string | null
           pix_enabled?: boolean
           pix_key?: string | null

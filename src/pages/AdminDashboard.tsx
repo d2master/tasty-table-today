@@ -14,6 +14,7 @@ interface AdminRestaurant {
   created_at: string;
   is_blocked: boolean;
   owner_email: string | null;
+  owner_phone: string | null;
 }
 
 export default function AdminDashboard() {
@@ -108,6 +109,7 @@ export default function AdminDashboard() {
                   <tr>
                     <th className="text-left px-4 py-3">Nome</th>
                     <th className="text-left px-4 py-3">Email do dono</th>
+                    <th className="text-left px-4 py-3">Celular</th>
                     <th className="text-left px-4 py-3">Cadastro</th>
                     <th className="text-left px-4 py-3">Status</th>
                     <th className="text-right px-4 py-3">Ação</th>
@@ -118,6 +120,7 @@ export default function AdminDashboard() {
                     <tr key={r.id} className="border-t">
                       <td className="px-4 py-3 font-medium">{r.name}</td>
                       <td className="px-4 py-3 text-muted-foreground">{r.owner_email ?? "-"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{r.owner_phone ?? "-"}</td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {new Date(r.created_at).toLocaleDateString("pt-BR")}
                       </td>
