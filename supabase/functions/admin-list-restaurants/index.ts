@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     // Busca restaurantes
     const { data: restaurants, error: restErr } = await supabase
       .from("restaurants")
-      .select("id, name, slug, created_at, is_blocked, owner_id")
+      .select("id, name, slug, created_at, is_blocked, owner_id, owner_phone")
       .order("created_at", { ascending: false });
     if (restErr) throw restErr;
 
