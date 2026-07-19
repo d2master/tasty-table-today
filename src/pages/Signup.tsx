@@ -10,6 +10,8 @@ import { generateSlug } from "@/lib/supabase-helpers";
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [storeName, setStoreName] = useState("");
   const [trashPassword, setTrashPassword] = useState("");
   const [pixPassword, setPixPassword] = useState("");
