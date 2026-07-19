@@ -32,6 +32,15 @@ export default function SignupPage() {
       toast.error("A senha do Pix deve ter exatamente 6 dígitos numéricos");
       return;
     }
+    const phoneDigits = phone.replace(/\D/g, "");
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+      toast.error("Informe um número de celular válido com DDD");
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.error("As senhas não coincidem");
+      return;
+    }
     setLoading(true);
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -55,6 +64,7 @@ export default function SignupPage() {
         owner_id: authData.user.id,
         trash_password: trashPassword,
         pix_password: pixPassword,
+        owner_phone: phoneDigits,
       });
 
       if (restaurantError) {
