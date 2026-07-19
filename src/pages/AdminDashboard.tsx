@@ -14,6 +14,7 @@ interface AdminRestaurant {
   created_at: string;
   is_blocked: boolean;
   owner_email: string | null;
+  owner_phone: string | null;
 }
 
 export default function AdminDashboard() {
