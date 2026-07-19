@@ -5,7 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { generateSlug } from "@/lib/supabase-helpers";
+
+const getSignupErrorMessage = (code?: string, fallback?: string) => {
+  if (code === "weak_password") {
+    return "Essa senha é muito comum ou já apareceu em vazamentos. Escolha uma senha mais forte.";
+  }
+  if (code === "invalid_email") {
+    return "Informe um email válido para criar sua conta.";
+  }
+  return fallback || "Não foi possível criar sua conta. Verifique os dados e tente novamente.";
+};
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -43,40 +52,37 @@ export default function SignupPage() {
     }
     setLoading(true);
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin },
+    const { data, error } = await supabase.functions.invoke("signup-restaurant", {
+      body: {
+        email,
+        password,
+        storeName: storeName.trim(),
+        trashPassword,
+        pixPassword,
+        phone: phoneDigits,
+        emailRedirectTo: `${window.location.origin}/login`,
+      },
     });
 
-    if (authError) {
-      console.error(authError);
-      toast.error("Não foi possível criar sua conta. Verifique os dados e tente novamente.");
+    if (error) {
+      console.error(error);
+      let payload: { code?: string; error?: string } | null = data ?? null;
+      const context = (error as unknown as { context?: Response }).context;
+      if (!payload && context) {
+        try {
+          payload = await context.json();
+        } catch {
+          payload = null;
+        }
+      }
+
+      toast.error(getSignupErrorMessage(payload?.code, payload?.error));
       setLoading(false);
       return;
     }
 
-    if (authData.user) {
-      const slug = generateSlug(storeName) + "-" + Date.now().toString(36).slice(-4);
-      const { error: restaurantError } = await supabase.from("restaurants").insert({
-        name: storeName,
-        slug,
-        owner_id: authData.user.id,
-        trash_password: trashPassword,
-        pix_password: pixPassword,
-        owner_phone: phoneDigits,
-      });
-
-      if (restaurantError) {
-        console.error(restaurantError);
-        toast.error("Não foi possível criar sua lanchonete. Tente novamente.");
-        setLoading(false);
-        return;
-      }
-    }
-
     setLoading(false);
-    toast.success("Conta criada! Verifique seu email para confirmar.");
+    toast.success("Conta criada! Verifique seu email para confirmar e depois entre no painel.");
     navigate("/login");
   };
 
