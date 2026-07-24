@@ -1009,6 +1009,9 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* WAITERS TAB */}
+        {activeTab === "waiters" && <WaitersTab restaurantId={restaurant.id} />}
+
         {/* TABLES TAB */}
         {activeTab === "tables" && (
           <div className="space-y-4 max-w-xl">
