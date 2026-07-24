@@ -14,6 +14,8 @@ import PublicMenu from "./pages/PublicMenu";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminResetPassword from "./pages/AdminResetPassword";
+import WaiterLogin from "./pages/WaiterLogin";
+import WaiterDashboard from "./pages/WaiterDashboard";
 
 const queryClient = new QueryClient();
 
