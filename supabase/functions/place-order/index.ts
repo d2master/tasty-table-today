@@ -21,6 +21,7 @@ const BodySchema = z.object({
   items: z.array(ItemSchema).min(1).max(100),
   append_to_order_id: z.string().uuid().optional(),
   tip_enabled: z.boolean().optional().default(false),
+  waiter_id: z.string().uuid().optional(),
 });
 
 // Waiter tip = 10% of subtotal, rounded to 2 decimals. Table orders only.
@@ -226,9 +227,11 @@ Deno.serve(async (req) => {
       const newSubtotal = previousSubtotal + subtotal;
       const newTip = originalTipEnabled ? Math.round(newSubtotal * 10) / 100 : 0;
       const newTotal = newSubtotal + newTip;
+      const updatePayload: Record<string, unknown> = { total: newTotal, tip_amount: newTip, updated_at: new Date().toISOString() };
+      if (body.waiter_id) updatePayload.waiter_id = body.waiter_id;
       await supabase
         .from("orders")
-        .update({ total: newTotal, tip_amount: newTip, updated_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq("id", existing.id);
 
       return new Response(JSON.stringify({
@@ -326,6 +329,7 @@ Deno.serve(async (req) => {
       pix_copy_paste: pixCopyPaste,
       tip_enabled: body.tip_enabled && body.order_type === "table",
       tip_amount: tipAmount,
+      waiter_id: body.waiter_id ?? null,
     };
 
     const { error: orderError } = await supabase.from("orders").insert(orderRow);

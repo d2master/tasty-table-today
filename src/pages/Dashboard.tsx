@@ -16,13 +16,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw, Armchair, Power } from "lucide-react";
+import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw, Armchair, Power, Users } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import type { OrderItem } from "@/hooks/useOrders";
 import { z } from "zod";
+import WaitersTab from "@/components/dashboard/WaitersTab";
 
-type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "pix" | "tables" | "shift";
+type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "pix" | "tables" | "shift" | "waiters";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendente", color: "bg-warning text-warning-foreground" },
@@ -756,6 +757,7 @@ export default function Dashboard() {
     { id: "orders-old" as Tab, label: "Pedidos anteriores", icon: ShoppingBag, count: olderOrders.length || undefined },
     { id: "trash" as Tab, label: "Lixeira", icon: Trash2, count: validTrashOrders.length || undefined },
     { id: "tables" as Tab, label: "Mesas", icon: Armchair },
+    { id: "waiters" as Tab, label: "Garçom", icon: Users },
     { id: "shift" as Tab, label: "Expediente", icon: Power },
     { id: "pix" as Tab, label: "Pix", icon: QrCode },
     { id: "products" as Tab, label: "Produtos", icon: Package },
@@ -1006,6 +1008,9 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+        {/* WAITERS TAB */}
+        {activeTab === "waiters" && <WaitersTab restaurantId={restaurant.id} />}
 
         {/* TABLES TAB */}
         {activeTab === "tables" && (

@@ -14,6 +14,8 @@ import PublicMenu from "./pages/PublicMenu";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminResetPassword from "./pages/AdminResetPassword";
+import WaiterLogin from "./pages/WaiterLogin";
+import WaiterDashboard from "./pages/WaiterDashboard";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +36,8 @@ const App = () => (
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/reset-password" element={<AdminResetPassword />} />
+          <Route path="/garcom/login" element={<WaiterLogin />} />
+          <Route path="/garcom" element={<WaiterDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

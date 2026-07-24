@@ -153,6 +153,7 @@ export type Database = {
           tip_enabled: boolean
           total: number
           updated_at: string
+          waiter_id: string | null
         }
         Insert: {
           created_at?: string
@@ -176,6 +177,7 @@ export type Database = {
           tip_enabled?: boolean
           total?: number
           updated_at?: string
+          waiter_id?: string | null
         }
         Update: {
           created_at?: string
@@ -199,6 +201,7 @@ export type Database = {
           tip_enabled?: boolean
           total?: number
           updated_at?: string
+          waiter_id?: string | null
         }
         Relationships: [
           {
@@ -206,6 +209,13 @@ export type Database = {
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_waiter_id_fkey"
+            columns: ["waiter_id"]
+            isOneToOne: false
+            referencedRelation: "waiters"
             referencedColumns: ["id"]
           },
         ]
@@ -354,6 +364,79 @@ export type Database = {
         }
         Relationships: []
       }
+      waiter_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          token: string
+          waiter_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          token: string
+          waiter_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          waiter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waiter_sessions_waiter_id_fkey"
+            columns: ["waiter_id"]
+            isOneToOne: false
+            referencedRelation: "waiters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      waiters: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          password_hash: string
+          restaurant_id: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          password_hash: string
+          restaurant_id: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          password_hash?: string
+          restaurant_id?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waiters_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -452,6 +535,93 @@ export type Database = {
           _pix_key_type: string
           _pix_recipient_name: string
         }
+        Returns: undefined
+      }
+      waiter_active_tables: {
+        Args: { _restaurant_id: string }
+        Returns: {
+          created_at: string
+          order_id: string
+          status: string
+          table_number: string
+          total: number
+          waiter_id: string
+          waiter_name: string
+        }[]
+      }
+      waiter_create: {
+        Args: {
+          _name: string
+          _password: string
+          _restaurant_id: string
+          _username: string
+        }
+        Returns: string
+      }
+      waiter_delete: { Args: { _waiter_id: string }; Returns: undefined }
+      waiter_from_token: {
+        Args: { _token: string }
+        Returns: {
+          restaurant_id: string
+          restaurant_slug: string
+          waiter_id: string
+          waiter_name: string
+        }[]
+      }
+      waiter_history: {
+        Args: { _from: string; _restaurant_id: string; _to: string }
+        Returns: {
+          orders_count: number
+          total_sales: number
+          total_tips: number
+          waiter_id: string
+          waiter_name: string
+        }[]
+      }
+      waiter_login: {
+        Args: { _password: string; _slug: string; _username: string }
+        Returns: {
+          restaurant_id: string
+          restaurant_name: string
+          restaurant_slug: string
+          token: string
+          waiter_id: string
+          waiter_name: string
+        }[]
+      }
+      waiter_logout: { Args: { _token: string }; Returns: undefined }
+      waiter_orders_for_table: {
+        Args: { _table_number: string; _waiter_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          status: string
+          tip_amount: number
+          tip_enabled: boolean
+          total: number
+          updated_at: string
+          waiter_id: string
+        }[]
+      }
+      waiter_reset_password: {
+        Args: { _new_password: string; _waiter_id: string }
+        Returns: undefined
+      }
+      waiter_tables: {
+        Args: { _waiter_id: string }
+        Returns: {
+          active_order_id: string
+          active_waiter_id: string
+          is_occupied: boolean
+          table_number: number
+        }[]
+      }
+      waiter_update: {
+        Args: { _is_active: boolean; _name: string; _waiter_id: string }
+        Returns: undefined
+      }
+      waiter_update_order_status: {
+        Args: { _order_id: string; _status: string; _waiter_id: string }
         Returns: undefined
       }
     }
