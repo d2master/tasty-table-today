@@ -327,6 +327,7 @@ Deno.serve(async (req) => {
       pix_copy_paste: pixCopyPaste,
       tip_enabled: body.tip_enabled && body.order_type === "table",
       tip_amount: tipAmount,
+      waiter_id: body.waiter_id ?? null,
     };
 
     const { error: orderError } = await supabase.from("orders").insert(orderRow);
