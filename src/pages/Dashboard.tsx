@@ -16,13 +16,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw, Armchair, Power } from "lucide-react";
+import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw, Armchair, Power, Users } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import type { OrderItem } from "@/hooks/useOrders";
 import { z } from "zod";
+import WaitersTab from "@/components/dashboard/WaitersTab";
 
-type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "pix" | "tables" | "shift";
+type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "pix" | "tables" | "shift" | "waiters";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendente", color: "bg-warning text-warning-foreground" },
