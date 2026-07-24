@@ -21,6 +21,7 @@ const BodySchema = z.object({
   items: z.array(ItemSchema).min(1).max(100),
   append_to_order_id: z.string().uuid().optional(),
   tip_enabled: z.boolean().optional().default(false),
+  waiter_id: z.string().uuid().optional(),
 });
 
 // Waiter tip = 10% of subtotal, rounded to 2 decimals. Table orders only.
