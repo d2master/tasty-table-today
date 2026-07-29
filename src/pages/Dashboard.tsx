@@ -1010,7 +1010,7 @@ export default function Dashboard() {
         )}
 
         {/* WAITERS TAB */}
-        {activeTab === "waiters" && <WaitersTab restaurantId={restaurant.id} />}
+        {activeTab === "waiters" && <WaitersTab restaurantId={restaurant.id} restaurantSlug={restaurant.slug} />}
 
         {/* TABLES TAB */}
         {activeTab === "tables" && (
