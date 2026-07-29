@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,7 +7,9 @@ import { toast } from "sonner";
 import { useWaiterSession } from "@/hooks/useWaiterSession";
 
 export default function WaiterLogin() {
-  const [slug, setSlug] = useState("");
+  const [searchParams] = useSearchParams();
+  const presetSlug = (searchParams.get("loja") || searchParams.get("slug") || "").trim().toLowerCase();
+  const [slug, setSlug] = useState(presetSlug);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,11 +37,18 @@ export default function WaiterLogin() {
           <p className="mt-2 text-muted-foreground">Entre com o usuário fornecido pela lanchonete</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="slug">Lanchonete</Label>
-            <Input id="slug" value={slug} onChange={e => setSlug(e.target.value)} required placeholder="ex: minha-lanchonete" />
-            <p className="text-xs text-muted-foreground">Identificador da lanchonete (mesmo do link do cardápio).</p>
-          </div>
+          {presetSlug ? (
+            <div className="rounded-lg border bg-card p-3 text-sm">
+              <p className="text-muted-foreground">Lanchonete</p>
+              <p className="font-medium">{presetSlug}</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="slug">Lanchonete</Label>
+              <Input id="slug" value={slug} onChange={e => setSlug(e.target.value)} required placeholder="ex: minha-lanchonete" />
+              <p className="text-xs text-muted-foreground">Identificador da lanchonete (mesmo do link do cardápio).</p>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="username">Usuário</Label>
             <Input id="username" value={username} onChange={e => setUsername(e.target.value)} required placeholder="garcom1" autoCapitalize="none" />

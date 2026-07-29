@@ -7,7 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, KeyRound, Trash2, Pencil } from "lucide-react";
+import { Plus, KeyRound, Trash2, Pencil, Copy } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 
 interface Waiter { id: string; username: string; name: string; is_active: boolean; created_at: string; }
 interface ActiveTable { waiter_id: string; waiter_name: string; table_number: string; order_id: string; status: string; total: number; created_at: string; }
@@ -15,7 +16,7 @@ interface HistoryRow { waiter_id: string; waiter_name: string; orders_count: num
 
 const currency = (n: number) => Number(n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-export default function WaitersTab({ restaurantId }: { restaurantId: string }) {
+export default function WaitersTab({ restaurantId, restaurantSlug }: { restaurantId: string; restaurantSlug: string }) {
   const [waiters, setWaiters] = useState<Waiter[]>([]);
   const [active, setActive] = useState<ActiveTable[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
@@ -34,6 +35,7 @@ export default function WaitersTab({ restaurantId }: { restaurantId: string }) {
   const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
   const [from, setFrom] = useState<string>(monthAgo.toISOString().slice(0, 10));
   const [to, setTo] = useState<string>(today.toISOString().slice(0, 10));
+  const waiterLoginUrl = `${window.location.origin}/garcom/login?loja=${encodeURIComponent(restaurantSlug)}`;
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -115,6 +117,32 @@ export default function WaitersTab({ restaurantId }: { restaurantId: string }) {
   return (
     <div className="space-y-6">
       <div className="rounded-xl border bg-card p-4">
+        <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
+          <div className="space-y-2">
+            <h2 className="font-display text-xl font-bold">Acesso dos garçons</h2>
+            <p className="text-sm text-muted-foreground">Envie este link ou QR Code para o garçom entrar sem digitar o identificador da lanchonete.</p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input value={waiterLoginUrl} readOnly className="text-xs" />
+              <Button
+                variant="outline"
+                onClick={() => {
+                  navigator.clipboard.writeText(waiterLoginUrl);
+                  toast.success("Link copiado!");
+                }}
+              >
+                <Copy className="h-4 w-4 mr-1" /> Copiar
+              </Button>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <div className="rounded-xl border bg-white p-3">
+              <QRCodeSVG value={waiterLoginUrl} size={148} level="H" includeMargin />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-card p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-display text-xl font-bold">Garçons</h2>
           <Button size="sm" onClick={() => setShowForm(v => !v)}><Plus className="h-4 w-4 mr-1" /> Novo garçom</Button>
@@ -138,7 +166,7 @@ export default function WaitersTab({ restaurantId }: { restaurantId: string }) {
             </div>
           </div>
         )}
-        <p className="text-xs text-muted-foreground mb-3">O garçom entra em <strong>/garcom/login</strong> com o usuário e senha que você criar.</p>
+        <p className="text-xs text-muted-foreground mb-3">O garçom entra pelo link acima com o usuário e senha que você criar.</p>
         {loading ? <p className="text-sm text-muted-foreground">Carregando...</p> : waiters.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhum garçom cadastrado ainda.</p>
         ) : (
