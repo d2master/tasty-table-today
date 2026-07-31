@@ -176,7 +176,7 @@ export default function WaiterDashboard() {
           </div>
         </header>
         <main className="container py-4 pb-40 space-y-4">
-          {[...grouped, ...(uncat.length ? [{ id: "uncat", name: "Outros", display_order: 999, products: uncat }] : [])].map(cat => (
+          {[...grouped, ...(uncat.length ? [{ id: "uncat", name: "Outros", sort_order: 999, products: uncat }] : [])].map(cat => (
             cat.products.length > 0 && (
               <section key={cat.id} className="space-y-2">
                 <h2 className="font-display text-lg font-bold">{cat.name}</h2>
