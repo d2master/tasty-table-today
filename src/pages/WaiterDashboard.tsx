@@ -12,7 +12,7 @@ import { playNewOrderSound, playTimerEndSound } from "@/lib/sounds";
 interface TableRow { table_number: number; is_occupied: boolean; active_waiter_id: string | null; active_order_id: string | null; }
 interface OrderRow { id: string; status: string; total: number; tip_enabled: boolean; tip_amount: number; waiter_id: string | null; created_at: string; updated_at: string; }
 interface ItemRow { order_id: string; product_name: string; quantity: number; price: number; }
-interface Category { id: string; name: string; display_order: number | null; }
+interface Category { id: string; name: string; sort_order: number | null; }
 interface Product { id: string; name: string; price: number; promo_price: number | null; is_promo: boolean; category_id: string | null; image_url: string | null; }
 
 const statusLabels: Record<string, { label: string; color: string }> = {
