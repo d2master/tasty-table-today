@@ -132,9 +132,9 @@ Deno.serve(async (req) => {
     if (action === "menu") {
       // categories + available products for waiter's restaurant
       const { data: categories } = await supabase.from("categories")
-        .select("id, name, display_order")
+        .select("id, name, sort_order")
         .eq("restaurant_id", waiter.restaurant_id)
-        .order("display_order");
+        .order("sort_order");
       const { data: products } = await supabase.from("products")
         .select("id, name, price, promo_price, is_promo, category_id, image_url, is_available, track_stock, stock_quantity")
         .eq("restaurant_id", waiter.restaurant_id)

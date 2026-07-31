@@ -12,7 +12,7 @@ import { playNewOrderSound, playTimerEndSound } from "@/lib/sounds";
 interface TableRow { table_number: number; is_occupied: boolean; active_waiter_id: string | null; active_order_id: string | null; }
 interface OrderRow { id: string; status: string; total: number; tip_enabled: boolean; tip_amount: number; waiter_id: string | null; created_at: string; updated_at: string; }
 interface ItemRow { order_id: string; product_name: string; quantity: number; price: number; }
-interface Category { id: string; name: string; display_order: number | null; }
+interface Category { id: string; name: string; sort_order: number | null; }
 interface Product { id: string; name: string; price: number; promo_price: number | null; is_promo: boolean; category_id: string | null; image_url: string | null; }
 
 const statusLabels: Record<string, { label: string; color: string }> = {
@@ -165,7 +165,8 @@ export default function WaiterDashboard() {
   // ==== MENU (place order) view ====
   if (showMenu) {
     const grouped = menu.categories.map(c => ({ ...c, products: menu.products.filter(p => p.category_id === c.id) }));
-    const uncat = menu.products.filter(p => !p.category_id);
+    const catIds = new Set(menu.categories.map(c => c.id));
+    const uncat = menu.products.filter(p => !p.category_id || !catIds.has(p.category_id));
     return (
       <div className="min-h-screen bg-background">
         <header className="sticky top-0 z-40 border-b bg-card">
@@ -175,7 +176,7 @@ export default function WaiterDashboard() {
           </div>
         </header>
         <main className="container py-4 pb-40 space-y-4">
-          {[...grouped, ...(uncat.length ? [{ id: "uncat", name: "Outros", display_order: 999, products: uncat }] : [])].map(cat => (
+          {[...grouped, ...(uncat.length ? [{ id: "uncat", name: "Outros", sort_order: 999, products: uncat }] : [])].map(cat => (
             cat.products.length > 0 && (
               <section key={cat.id} className="space-y-2">
                 <h2 className="font-display text-lg font-bold">{cat.name}</h2>
