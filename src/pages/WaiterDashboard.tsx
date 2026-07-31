@@ -165,7 +165,8 @@ export default function WaiterDashboard() {
   // ==== MENU (place order) view ====
   if (showMenu) {
     const grouped = menu.categories.map(c => ({ ...c, products: menu.products.filter(p => p.category_id === c.id) }));
-    const uncat = menu.products.filter(p => !p.category_id);
+    const catIds = new Set(menu.categories.map(c => c.id));
+    const uncat = menu.products.filter(p => !p.category_id || !catIds.has(p.category_id));
     return (
       <div className="min-h-screen bg-background">
         <header className="sticky top-0 z-40 border-b bg-card">
