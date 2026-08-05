@@ -207,10 +207,6 @@ export default function WaiterDashboard() {
         </main>
         <div className="fixed bottom-0 inset-x-0 border-t bg-card p-3 space-y-2">
           <div className="container space-y-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={tipEnabled} onChange={e => setTipEnabled(e.target.checked)} />
-              Cliente quer pagar 10% do garçom
-            </label>
             <div className="flex items-center justify-between">
               <span className="font-medium">Total: {currency(cartTotal)}</span>
               <Button onClick={placeOrder} disabled={placing || Object.values(cart).every(q => !q)}>
