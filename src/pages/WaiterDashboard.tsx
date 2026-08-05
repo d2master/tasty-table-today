@@ -139,7 +139,7 @@ export default function WaiterDashboard() {
         table_number: String(selectedTable),
         items: cartItems,
         append_to_order_id: activeOrder?.id,
-        tip_enabled: tipEnabled,
+        tip_enabled: false,
       }, session.token);
       toast.success(activeOrder ? "Itens adicionados à mesa" : "Pedido criado");
       setShowMenu(false);
@@ -151,14 +151,19 @@ export default function WaiterDashboard() {
     }
   };
 
-  const changeStatus = async (orderId: string, status: string) => {
+  const closeBill = async (orderId: string, tip: boolean) => {
     if (!session) return;
+    setClosing(true);
     try {
-      await callWaiterApi("update_status", { order_id: orderId, status }, session.token);
+      await callWaiterApi("close_bill", { order_id: orderId, tip_enabled: tip }, session.token);
+      toast.success("Conta fechada");
+      setClosingOrder(null);
       setRefreshTick(t => t + 1);
-      if (status === "done") playTimerEndSound();
+      playTimerEndSound();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao atualizar");
+      toast.error(e instanceof Error ? e.message : "Erro ao fechar conta");
+    } finally {
+      setClosing(false);
     }
   };
 
