@@ -549,6 +549,10 @@ export type Database = {
           waiter_name: string
         }[]
       }
+      waiter_close_bill: {
+        Args: { _order_id: string; _tip_enabled: boolean; _waiter_id: string }
+        Returns: undefined
+      }
       waiter_create: {
         Args: {
           _name: string

@@ -39,7 +39,9 @@ export default function WaiterDashboard() {
   const [menu, setMenu] = useState<{ categories: Category[]; products: Product[] }>({ categories: [], products: [] });
   const [cart, setCart] = useState<Record<string, number>>({});
   const [placing, setPlacing] = useState(false);
-  const [tipEnabled, setTipEnabled] = useState(false);
+  
+  const [closingOrder, setClosingOrder] = useState<OrderRow | null>(null);
+  const [closing, setClosing] = useState(false);
 
   const knownReadyRef = useRef<Set<string>>(new Set());
 
@@ -110,7 +112,7 @@ export default function WaiterDashboard() {
       const data = await callWaiterApi("menu", {}, session.token);
       setMenu(data);
       setCart({});
-      setTipEnabled(false);
+      
       setShowMenu(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao carregar cardápio");
@@ -137,7 +139,7 @@ export default function WaiterDashboard() {
         table_number: String(selectedTable),
         items: cartItems,
         append_to_order_id: activeOrder?.id,
-        tip_enabled: tipEnabled,
+        tip_enabled: false,
       }, session.token);
       toast.success(activeOrder ? "Itens adicionados à mesa" : "Pedido criado");
       setShowMenu(false);
@@ -149,14 +151,19 @@ export default function WaiterDashboard() {
     }
   };
 
-  const changeStatus = async (orderId: string, status: string) => {
+  const closeBill = async (orderId: string, tip: boolean) => {
     if (!session) return;
+    setClosing(true);
     try {
-      await callWaiterApi("update_status", { order_id: orderId, status }, session.token);
+      await callWaiterApi("close_bill", { order_id: orderId, tip_enabled: tip }, session.token);
+      toast.success("Conta fechada");
+      setClosingOrder(null);
       setRefreshTick(t => t + 1);
-      if (status === "done") playTimerEndSound();
+      playTimerEndSound();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao atualizar");
+      toast.error(e instanceof Error ? e.message : "Erro ao fechar conta");
+    } finally {
+      setClosing(false);
     }
   };
 
@@ -205,10 +212,6 @@ export default function WaiterDashboard() {
         </main>
         <div className="fixed bottom-0 inset-x-0 border-t bg-card p-3 space-y-2">
           <div className="container space-y-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={tipEnabled} onChange={e => setTipEnabled(e.target.checked)} />
-              Cliente quer pagar 10% do garçom
-            </label>
             <div className="flex items-center justify-between">
               <span className="font-medium">Total: {currency(cartTotal)}</span>
               <Button onClick={placeOrder} disabled={placing || Object.values(cart).every(q => !q)}>
@@ -254,11 +257,23 @@ export default function WaiterDashboard() {
                 <strong>{currency(Number(o.total))}</strong>
               </div>
               {["pending","preparing","ready"].includes(o.status) && (
-                <div className="flex flex-wrap gap-2">
-                  {o.status === "pending" && <Button size="sm" variant="outline" onClick={() => changeStatus(o.id, "preparing")}>Em preparo</Button>}
-                  {(o.status === "pending" || o.status === "preparing") && <Button size="sm" variant="outline" onClick={() => changeStatus(o.id, "ready")}>Pronto</Button>}
-                  <Button size="sm" onClick={() => changeStatus(o.id, "done")}>Finalizar</Button>
-                </div>
+                closingOrder?.id === o.id ? (
+                  <div className="rounded-lg border bg-muted/40 p-3 space-y-3">
+                    <p className="text-sm font-medium">O cliente deseja pagar os 10% do garçom?</p>
+                    <p className="text-xs text-muted-foreground">
+                      10% = {currency((items[o.id] || []).reduce((s, it) => s + Number(it.price) * it.quantity, 0) * 0.1)}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" disabled={closing} onClick={() => closeBill(o.id, true)}>Sim, pagar 10%</Button>
+                      <Button size="sm" variant="outline" disabled={closing} onClick={() => closeBill(o.id, false)}>Não pagar</Button>
+                      <Button size="sm" variant="ghost" disabled={closing} onClick={() => setClosingOrder(null)}>Cancelar</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={() => setClosingOrder(o)}>Fechar conta</Button>
+                  </div>
+                )
               )}
             </div>
           ))}

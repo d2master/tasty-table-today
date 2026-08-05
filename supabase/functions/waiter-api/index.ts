@@ -129,6 +129,23 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    if (action === "close_bill") {
+      const parsed = z.object({
+        order_id: z.string().uuid(),
+        tip_enabled: z.boolean().optional().default(false),
+      }).safeParse(body);
+      if (!parsed.success) return json({ error: "Dados inválidos" }, 400);
+      const { error } = await supabase.rpc("waiter_close_bill", {
+        _waiter_id: waiter.waiter_id,
+        _order_id: parsed.data.order_id,
+        _tip_enabled: parsed.data.tip_enabled,
+      });
+      if (error) {
+        return json({ error: error.message.includes("another waiter") ? "Pedido de outro garçom" : "Não autorizado" }, 403);
+      }
+      return json({ ok: true });
+    }
+
     if (action === "menu") {
       // categories + available products for waiter's restaurant
       const { data: categories } = await supabase.from("categories")
