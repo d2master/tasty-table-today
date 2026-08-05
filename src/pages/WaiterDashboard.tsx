@@ -40,6 +40,8 @@ export default function WaiterDashboard() {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [placing, setPlacing] = useState(false);
   const [tipEnabled, setTipEnabled] = useState(false);
+  const [closingOrder, setClosingOrder] = useState<OrderRow | null>(null);
+  const [closing, setClosing] = useState(false);
 
   const knownReadyRef = useRef<Set<string>>(new Set());
 
