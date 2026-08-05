@@ -112,7 +112,7 @@ export default function WaiterDashboard() {
       const data = await callWaiterApi("menu", {}, session.token);
       setMenu(data);
       setCart({});
-      setTipEnabled(false);
+      
       setShowMenu(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao carregar cardápio");
