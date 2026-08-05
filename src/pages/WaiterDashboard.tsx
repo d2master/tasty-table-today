@@ -39,7 +39,7 @@ export default function WaiterDashboard() {
   const [menu, setMenu] = useState<{ categories: Category[]; products: Product[] }>({ categories: [], products: [] });
   const [cart, setCart] = useState<Record<string, number>>({});
   const [placing, setPlacing] = useState(false);
-  const [tipEnabled, setTipEnabled] = useState(false);
+  
   const [closingOrder, setClosingOrder] = useState<OrderRow | null>(null);
   const [closing, setClosing] = useState(false);
 
