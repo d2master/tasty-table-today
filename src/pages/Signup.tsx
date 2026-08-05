@@ -82,7 +82,7 @@ export default function SignupPage() {
     }
 
     setLoading(false);
-    toast.success("Conta criada! Verifique seu email para confirmar e depois entre no painel.");
+    toast.success("Conta criada com sucesso! Entre com seu email e senha.");
     navigate("/login");
   };
 
