@@ -256,11 +256,23 @@ export default function WaiterDashboard() {
                 <strong>{currency(Number(o.total))}</strong>
               </div>
               {["pending","preparing","ready"].includes(o.status) && (
-                <div className="flex flex-wrap gap-2">
-                  {o.status === "pending" && <Button size="sm" variant="outline" onClick={() => changeStatus(o.id, "preparing")}>Em preparo</Button>}
-                  {(o.status === "pending" || o.status === "preparing") && <Button size="sm" variant="outline" onClick={() => changeStatus(o.id, "ready")}>Pronto</Button>}
-                  <Button size="sm" onClick={() => changeStatus(o.id, "done")}>Finalizar</Button>
-                </div>
+                closingOrder?.id === o.id ? (
+                  <div className="rounded-lg border bg-muted/40 p-3 space-y-3">
+                    <p className="text-sm font-medium">O cliente deseja pagar os 10% do garçom?</p>
+                    <p className="text-xs text-muted-foreground">
+                      10% = {currency((items[o.id] || []).reduce((s, it) => s + Number(it.price) * it.quantity, 0) * 0.1)}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" disabled={closing} onClick={() => closeBill(o.id, true)}>Sim, pagar 10%</Button>
+                      <Button size="sm" variant="outline" disabled={closing} onClick={() => closeBill(o.id, false)}>Não pagar</Button>
+                      <Button size="sm" variant="ghost" disabled={closing} onClick={() => setClosingOrder(null)}>Cancelar</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={() => setClosingOrder(o)}>Fechar conta</Button>
+                  </div>
+                )
               )}
             </div>
           ))}
