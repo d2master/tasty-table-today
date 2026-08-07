@@ -1,73 +1,58 @@
 ## Objetivo
 
-Criar um sistema de garçons onde:
-- A lanchonete cadastra usuário/senha de cada garçom.
-- O garçom entra em `/garcom/login`, escolhe mesas livres para atender, cria pedidos e acompanha em tempo real.
-- A lanchonete tem uma nova aba **"Garçom"** com CRUD de garçons e histórico completo (com filtro por período) das mesas atendidas e gorjetas.
+Transformar a aba **"Mesas"** do painel da lanchonete em um mapa visual do salão, com todas as mesas em ícones quadrados coloridos por status, ocupadas em cima e livres embaixo, mostrando garçom, cliente e pedidos de cada mesa.
 
-## Modelo de dados (migration)
+## Como o painel vai funcionar
 
-Nova tabela `waiters` (por lanchonete):
-- `restaurant_id`, `username` (único por lanchonete), `password_hash`, `name`, `is_active`
+Duas seções, na ordem:
 
-Alterações em `orders`:
-- `waiter_id` (uuid, nullable) — garçom que atendeu (só para pedidos de mesa).
+1. **Mesas ocupadas** — mesas com pedido ativo (pendente, em preparo ou pronto).
+2. **Mesas livres** — todas as demais mesas até a quantidade configurada.
 
-Nova tabela `waiter_sessions` para o login com token opaco (usuário+senha simples, sem Supabase Auth):
-- `id`, `waiter_id`, `token` (uuid), `expires_at`.
+Cada mesa é um card quadrado com o número grande, o status e a cor correspondente:
 
-Grants + RLS: dados só acessíveis via RPCs `SECURITY DEFINER` (nenhum acesso direto do anon). Owner da lanchonete pode ler/gerenciar via policies com `is_restaurant_owner`.
+| Situação do pedido da mesa | Rótulo no card | Cor |
+| --- | --- | --- |
+| Pedido recém-criado | Pendente | âmbar/aviso |
+| Marcado "Em preparo" | Em preparo | azul/info |
+| Marcado "Pronto" | Ocupada | laranja/destaque |
+| Finalizado ou cancelado (ou sem pedido) | Livre | verde suave / neutro |
 
-## Edge functions
+A mesa volta a ficar **Livre** automaticamente quando o pedido é finalizado ou cancelado — tanto pelo painel da lanchonete quanto pelo "Fechar conta" do garçom (que já marca o pedido como finalizado).
 
-- `waiter-auth` — login (usuário+senha por slug da lanchonete), retorna `token`. Também `logout`, `me`.
-- `waiter-claim-table` — garçom assume mesa livre; grava vínculo em memória de sessão + próximo pedido daquela mesa recebe `waiter_id`.
-- `waiter-place-order` — cria pedido em nome do cliente na mesa atendida (reaproveita lógica do `place-order`, marca `waiter_id`).
-- `waiter-update-status` — permite mover pedido para `ready` / `done` (só nas mesas do garçom).
-- Ajuste em `place-order`: aceita `waiter_id` quando pedido vem via garçom.
+## Informações de cada mesa
 
-Autenticação: header `x-waiter-token` validado contra `waiter_sessions`.
+No card ocupado: número da mesa, status, nome do cliente, nome do garçom que está atendendo (quando houver), horário de abertura e total.
 
-## Frontend
+Ao clicar na mesa, abre um painel de detalhes com:
+- Cliente e garçom
+- Lista de pedidos ativos daquela mesa com status e total
+- Itens de cada pedido (quantidade, nome, preço)
+- Indicação de gorjeta de 10%, quando aplicada
 
-Rotas novas em `src/App.tsx`:
-- `/garcom/login` → `WaiterLogin.tsx` (input usuário, senha, slug da lanchonete).
-- `/garcom` → `WaiterDashboard.tsx` (protegido por token no `localStorage`).
+A configuração atual de "Quantidade de mesas" continua na mesma aba, abaixo do mapa.
 
-**WaiterDashboard** (mobile-first):
-- Aba "Mesas": grid das mesas — livres (assumir), minhas (abrir), ocupadas por outro garçom (bloqueadas).
-- Ao abrir uma mesa: lista de pedidos com status, botão "Marcar pronto/entregue", botão "Adicionar itens" (abre mini-cardápio com categorias/produtos e envia via `waiter-place-order`).
-- Notificação sonora + toast quando pedido de uma mesa dele muda para `ready` (realtime).
+## Atualização em tempo real
 
-**Aba "Garçom" no Dashboard da lanchonete** (`src/pages/Dashboard.tsx`):
-- Lista de garçons com criar/editar/ativar/desativar/resetar senha.
-- Cada garçom: mesas ativas agora (tempo real), total de vendas e gorjetas.
-- Filtro por período (data início/fim) mostrando histórico de mesas atendidas, valor total e gorjetas.
-
-## Segurança
-
-- Senha do garçom armazenada com hash (pgcrypto `crypt` + `gen_salt('bf')`).
-- Nenhum grant direto em `waiters`/`waiter_sessions` para `anon`/`authenticated`; tudo passa por RPC ou edge function usando service role.
-- Token de sessão do garçom expira em 12h e é renovado a cada requisição.
-- Owner só enxerga/gerencia garçons da própria lanchonete (policies via `is_restaurant_owner`).
+O painel escuta as mudanças da tabela de pedidos e recalcula o mapa imediatamente, sem recarregar a página.
 
 ## Detalhes técnicos
 
+- Novo componente `src/components/dashboard/TablesTab.tsx`, usado na aba `tables` do `Dashboard.tsx`; o bloco de quantidade de mesas é movido para dentro dele (props: `restaurantId`, `tableCount`, e os handlers de salvar quantidade já existentes).
+- Sem alterações no banco: usa `orders` (colunas `table_number`, `status`, `customer_name`, `waiter_id`, `total`, `tip_amount`, `created_at`, `deleted_at`) e `waiters` (`id`, `name`), ambos já legíveis pelo dono via RLS; itens via `order_items` (policy de dono já existente).
+- Mesas ocupadas = pedidos com `order_type = 'table'`, `deleted_at is null` e `status in ('pending','preparing','ready')`, agrupados por `table_number`. Quando uma mesa tem vários pedidos ativos, o status exibido é o mais avançado.
+- Cores via tokens semânticos já definidos (`warning`, `info`, `accent`, `success`, `muted`) — sem cores hardcoded.
+- Realtime: canal `postgres_changes` em `orders` filtrado por `restaurant_id`, criado dentro de `useEffect` com cleanup via `supabase.removeChannel`.
+
 ```text
-Fluxo login garçom:
-[/garcom/login] --(slug, user, senha)--> waiter-auth
-   -> valida hash, cria waiter_sessions row
-   -> retorna { token, waiter: {id, name, restaurant_id, slug} }
-   -> client salva em localStorage e vai para /garcom
+[ Mesas ocupadas ]
+ ┌────┐ ┌────┐ ┌────┐
+ │ 3  │ │ 7  │ │ 12 │   3 = Em preparo (azul)
+ │Prep│ │Ocup│ │Pend│   7 = Ocupada (laranja)
+ └────┘ └────┘ └────┘  12 = Pendente (âmbar)
+
+[ Mesas livres ]
+ ┌────┐ ┌────┐ ┌────┐ ...
+ │ 1  │ │ 2  │ │ 4  │
+ └────┘ └────┘ └────┘
 ```
-
-- `waiter_id` em `orders` também aparece no dashboard atual da lanchonete (badge "Garçom: X") sem quebrar layouts existentes.
-- Realtime já habilitado em `orders`; painel do garçom usa mesmo canal filtrando por `waiter_id`.
-
-## Entregáveis por etapa
-
-1. Migration: tabelas `waiters`, `waiter_sessions`, coluna `orders.waiter_id`, RPCs `waiter_login`, `waiter_validate_token`, policies e grants.
-2. Edge functions: `waiter-auth`, `waiter-claim-table`, `waiter-place-order`, `waiter-update-status`; ajuste em `place-order`.
-3. Frontend garçom: `WaiterLogin.tsx`, `WaiterDashboard.tsx`, hook `useWaiterSession`.
-4. Frontend lanchonete: nova aba "Garçom" em `Dashboard.tsx` com CRUD + histórico filtrável.
-5. Link visível em `/login` (ou na Home) para "Entrar como garçom".
