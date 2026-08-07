@@ -22,6 +22,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import type { OrderItem } from "@/hooks/useOrders";
 import { z } from "zod";
 import WaitersTab from "@/components/dashboard/WaitersTab";
+import TablesTab from "@/components/dashboard/TablesTab";
+
 
 type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "pix" | "tables" | "shift" | "waiters";
 
