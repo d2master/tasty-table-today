@@ -22,6 +22,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import type { OrderItem } from "@/hooks/useOrders";
 import { z } from "zod";
 import WaitersTab from "@/components/dashboard/WaitersTab";
+import TablesTab from "@/components/dashboard/TablesTab";
+
 
 type Tab = "orders" | "orders-old" | "trash" | "products" | "categories" | "pix" | "tables" | "shift" | "waiters";
 
@@ -1014,9 +1016,13 @@ export default function Dashboard() {
 
         {/* TABLES TAB */}
         {activeTab === "tables" && (
-          <div className="space-y-4 max-w-xl">
+          <div className="space-y-8">
+            <TablesTab restaurantId={restaurant.id} tableCount={Number((restaurant as any).table_count ?? 0)} />
+
+            <div className="space-y-4 max-w-xl">
             <div className="space-y-1">
               <h2 className="font-display text-xl font-bold">Mesas do salão</h2>
+
               <p className="text-sm text-muted-foreground">
                 Defina quantas mesas existem no seu local. As mesas serão numeradas de <strong>1</strong> até a quantidade informada.
                 No cardápio, o cliente só poderá escolher mesas que não estão ocupadas.
@@ -1046,8 +1052,10 @@ export default function Dashboard() {
                 Atualmente configurado: <strong>{(restaurant as any).table_count ?? 0}</strong> mesa(s).
               </p>
             </div>
+            </div>
           </div>
         )}
+
 
         {/* SHIFT TAB */}
         {activeTab === "shift" && (
