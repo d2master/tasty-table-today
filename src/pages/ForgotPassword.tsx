@@ -14,7 +14,8 @@ export default function ForgotPassword() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const normalizedEmail = email.trim().toLowerCase();
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
       redirectTo: `${window.location.origin}/redefinir-senha`,
     });
     setLoading(false);
@@ -35,7 +36,7 @@ export default function ForgotPassword() {
         {sent ? (
           <div className="text-center space-y-4">
             <p className="text-sm text-muted-foreground">
-              Enviamos um link de recuperação para <strong>{email}</strong>. Verifique sua caixa de entrada.
+              Se este email estiver cadastrado, enviaremos um link de recuperação. Verifique também a pasta de spam.
             </p>
             <Link to="/login" className="text-primary font-medium hover:underline text-sm">
               Voltar para o login
@@ -45,7 +46,18 @@ export default function ForgotPassword() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="seu@email.com" />
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                inputMode="email"
+                required
+                placeholder="seu@email.com"
+              />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Enviando..." : "Enviar link de recuperação"}

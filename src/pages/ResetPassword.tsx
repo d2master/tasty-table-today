@@ -14,11 +14,23 @@ export default function ResetPassword() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    if (hashParams.get("type") === "recovery") {
+      setIsRecovery(true);
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setIsRecovery(true);
       }
     });
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session && hashParams.get("type") === "recovery") {
+        setIsRecovery(true);
+      }
+    });
+
     return () => subscription.unsubscribe();
   }, []);
 
