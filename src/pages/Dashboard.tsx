@@ -1050,8 +1050,10 @@ export default function Dashboard() {
                 Atualmente configurado: <strong>{(restaurant as any).table_count ?? 0}</strong> mesa(s).
               </p>
             </div>
+            </div>
           </div>
         )}
+
 
         {/* SHIFT TAB */}
         {activeTab === "shift" && (
