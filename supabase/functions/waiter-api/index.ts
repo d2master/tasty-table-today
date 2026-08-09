@@ -164,6 +164,7 @@ Deno.serve(async (req) => {
         table_number: z.string().min(1),
         items: z.array(ItemSchema).min(1).max(100),
         append_to_order_id: z.string().uuid().optional(),
+        observation: z.string().trim().max(500).optional().default(""),
         tip_enabled: z.boolean().optional().default(false),
       }).safeParse(body);
       if (!parsed.success) return json({ error: "Dados inválidos" }, 400);
@@ -187,6 +188,7 @@ Deno.serve(async (req) => {
           table_number: parsed.data.table_number,
           items: parsed.data.items,
           append_to_order_id: parsed.data.append_to_order_id,
+          observation: parsed.data.observation,
           tip_enabled: parsed.data.tip_enabled,
           waiter_id: waiter.waiter_id,
         }),

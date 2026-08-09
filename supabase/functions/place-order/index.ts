@@ -325,6 +325,7 @@ Deno.serve(async (req) => {
       payment_method: body.payment_method ?? null,
       delivery_address: body.delivery_address ?? null,
       delivery_maps_url: body.delivery_maps_url ?? null,
+      observation: body.observation || "",
       payment_status: body.payment_method === "pix" ? "awaiting_pix" : "pending",
       pix_copy_paste: pixCopyPaste,
       tip_enabled: body.tip_enabled && body.order_type === "table",
