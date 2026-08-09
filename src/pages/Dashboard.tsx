@@ -1121,6 +1121,40 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* Thermal printer */}
+            <div className="rounded-xl border bg-card p-4 space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-medium flex items-center gap-2"><Printer className="h-4 w-4" /> Impressão automática</p>
+                  <p className="text-xs text-muted-foreground">
+                    Imprime o cupom (bobina 80mm) automaticamente quando um novo pedido chega. Mantenha esta aba aberta e a impressora térmica como padrão do dispositivo.
+                  </p>
+                </div>
+                <Switch checked={autoPrint} onCheckedChange={setAutoPrint} />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  printOrder({
+                    id: "00000000-0000-0000-0000-0000000teste".slice(0, 36),
+                    restaurant_id: restaurant.id,
+                    customer_name: "Teste de impressão",
+                    customer_phone: "",
+                    table_number: "1",
+                    status: "pending",
+                    total: 0,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    deleted_at: null,
+                    order_type: "table",
+                  } as any)
+                }
+              >
+                <Printer className="h-4 w-4 mr-1" /> Imprimir cupom de teste
+              </Button>
+            </div>
+
             {/* Service mode selector */}
             <div className="rounded-xl border bg-card p-4 space-y-3">
               <div className="space-y-1">
