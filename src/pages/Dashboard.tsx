@@ -1137,7 +1137,7 @@ export default function Dashboard() {
                 size="sm"
                 onClick={() =>
                   printOrder({
-                    id: "00000000-0000-0000-0000-0000000teste".slice(0, 36),
+                    id: crypto.randomUUID(),
                     restaurant_id: restaurant.id,
                     customer_name: "Teste de impressão",
                     customer_phone: "",
