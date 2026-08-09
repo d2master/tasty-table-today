@@ -396,7 +396,7 @@ export default function PublicMenu() {
         ...orderPayload,
         customer_name: customerName.trim() || "Cliente",
         table_number: tableNumber.trim(),
-        customer_phone: observation.trim() || null,
+        customer_phone: null,
       };
     } else {
       const addressValue = addressMode === "manual" ? deliveryAddress : deliveryMapsUrl;
@@ -425,12 +425,9 @@ export default function PublicMenu() {
         customer_phone: customerPhone.trim(),
         table_number: "",
         payment_method: paymentMethod,
-        delivery_address: addressMode === "manual" ? deliveryAddress.trim() : (observation.trim() ? `Obs: ${observation.trim()}` : null),
+        delivery_address: addressMode === "manual" ? deliveryAddress.trim() : null,
         delivery_maps_url: addressMode === "maps" ? deliveryMapsUrl.trim() : null,
       };
-      if (addressMode === "manual" && observation.trim()) {
-        orderPayload.delivery_address = `${deliveryAddress.trim()}\nObs: ${observation.trim()}`;
-      }
     }
 
 
@@ -447,6 +444,7 @@ export default function PublicMenu() {
           delivery_address: orderPayload.delivery_address ?? null,
           delivery_maps_url: orderPayload.delivery_maps_url ?? null,
           items: cart.map(c => ({ product_id: c.product.id, quantity: c.quantity })),
+          observation: observation.trim(),
           tip_enabled: orderMode === "table" ? tipEnabled : false,
         },
       });

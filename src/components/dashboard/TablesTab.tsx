@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { User, Utensils } from "lucide-react";
+import { User, Utensils, Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { printReceipt } from "@/lib/printReceipt";
 
 interface TableOrder {
   id: string;
@@ -52,7 +54,7 @@ const tableStatus: Record<string, { label: string; card: string; badge: string }
 
 const currency = (n: number) => Number(n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-export default function TablesTab({ restaurantId, tableCount }: { restaurantId: string; tableCount: number }) {
+export default function TablesTab({ restaurantId, tableCount, restaurantName = "Pedido", restaurantPhone = null }: { restaurantId: string; tableCount: number; restaurantName?: string; restaurantPhone?: string | null }) {
   const [orders, setOrders] = useState<TableOrder[]>([]);
   const [waiters, setWaiters] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -63,7 +65,7 @@ export default function TablesTab({ restaurantId, tableCount }: { restaurantId: 
     const [{ data: o }, { data: w }] = await Promise.all([
       supabase
         .from("orders")
-        .select("id, table_number, status, customer_name, waiter_id, total, tip_amount, tip_enabled, created_at")
+        .select("id, table_number, status, customer_name, waiter_id, total, tip_amount, tip_enabled, created_at, observation")
         .eq("restaurant_id", restaurantId)
         .eq("order_type", "table")
         .is("deleted_at", null)
@@ -267,6 +269,30 @@ export default function TablesTab({ restaurantId, tableCount }: { restaurantId: 
                       <span>Total</span>
                       <span>{currency(Number(o.total))}</span>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() =>
+                        printReceipt({
+                          restaurantName,
+                          restaurantPhone,
+                          orderId: o.id,
+                          createdAt: o.created_at,
+                          orderType: "table",
+                          tableNumber: o.table_number,
+                          waiterName: o.waiter_id ? waiters[o.waiter_id] ?? null : null,
+                          customerName: o.customer_name,
+                          observation: (o as any).observation ?? null,
+                          items: oItems.map(i => ({ product_name: i.product_name, quantity: i.quantity, price: Number(i.price) })),
+                          tipEnabled: Boolean(o.tip_enabled),
+                          tipAmount: Number(o.tip_amount ?? 0),
+                          total: Number(o.total),
+                        })
+                      }
+                    >
+                      <Printer className="h-4 w-4 mr-1" /> Imprimir cupom
+                    </Button>
                   </div>
                 );
               })}

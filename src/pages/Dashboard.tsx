@@ -8,6 +8,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { useOrders } from "@/hooks/useOrders";
 import { uploadProductImage } from "@/lib/supabase-helpers";
 import { playNewOrderSound, playTimerEndSound } from "@/lib/sounds";
+import { usePrintOrder } from "@/hooks/usePrintOrder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw, Armchair, Power, Users } from "lucide-react";
+import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw, Armchair, Power, Users, Printer } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import type { OrderItem } from "@/hooks/useOrders";
@@ -133,6 +134,19 @@ export default function Dashboard() {
   // Track order count for new-order sound
   const prevOrderCountRef = useRef<number | null>(null);
 
+  // Thermal printing (80mm)
+  const { printOrder } = usePrintOrder({
+    restaurantName: restaurant?.name ?? "Pedido",
+    restaurantPhone: (restaurant as any)?.owner_phone ?? null,
+  });
+  const [autoPrint, setAutoPrint] = useState<boolean>(() => localStorage.getItem("auto_print_orders") === "1");
+  const printedRef = useRef<Set<string>>(new Set());
+  const autoPrintReadyRef = useRef(false);
+
+  useEffect(() => {
+    localStorage.setItem("auto_print_orders", autoPrint ? "1" : "0");
+  }, [autoPrint]);
+
   // Detect new orders and play sound
   useEffect(() => {
     const pendingCount = orders.filter(o => o.status === "pending").length;
@@ -142,6 +156,23 @@ export default function Dashboard() {
     }
     prevOrderCountRef.current = pendingCount;
   }, [orders]);
+
+  // Auto-print newly received orders (only orders that arrive after this session loaded)
+  useEffect(() => {
+    if (!restaurant) return;
+    if (!autoPrintReadyRef.current) {
+      orders.forEach(o => printedRef.current.add(o.id));
+      autoPrintReadyRef.current = true;
+      return;
+    }
+    if (!autoPrint) {
+      orders.forEach(o => printedRef.current.add(o.id));
+      return;
+    }
+    const fresh = orders.filter(o => !printedRef.current.has(o.id));
+    fresh.forEach(o => printedRef.current.add(o.id));
+    fresh.forEach((o, idx) => setTimeout(() => { printOrder(o); }, idx * 1500));
+  }, [orders, autoPrint, restaurant, printOrder]);
 
   // Timer countdown interval
   useEffect(() => {
@@ -601,7 +632,9 @@ export default function Dashboard() {
               )}
             </div>
           )}
-          {!isDelivery && order.customer_phone && <p className="text-sm text-muted-foreground">Obs: {order.customer_phone}</p>}
+          {((order as any).observation || (!isDelivery && order.customer_phone)) && (
+            <p className="text-sm text-muted-foreground">Obs: {(order as any).observation || order.customer_phone}</p>
+          )}
           {isDelivery && order.customer_phone && <p className="text-sm text-muted-foreground">Tel: {order.customer_phone}</p>}
           <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString("pt-BR")}</p>
           {isTrash && order.deleted_at && (
@@ -713,6 +746,9 @@ export default function Dashboard() {
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="sm" onClick={() => handleExpandOrder(order.id)}>
           {expandedOrder === order.id ? "Ocultar itens" : "Ver itens"}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => printOrder(order)}>
+          <Printer className="h-4 w-4 mr-1" /> Imprimir
         </Button>
         {!isTrash && (
           <Button variant="ghost" size="sm" onClick={() => handleSoftDelete(order.id)} className="text-destructive hover:text-destructive">
@@ -1017,7 +1053,7 @@ export default function Dashboard() {
         {/* TABLES TAB */}
         {activeTab === "tables" && (
           <div className="space-y-8">
-            <TablesTab restaurantId={restaurant.id} tableCount={Number((restaurant as any).table_count ?? 0)} />
+            <TablesTab restaurantId={restaurant.id} tableCount={Number((restaurant as any).table_count ?? 0)} restaurantName={restaurant.name} restaurantPhone={(restaurant as any).owner_phone ?? null} />
 
             <div className="space-y-4 max-w-xl">
             <div className="space-y-1">
@@ -1085,6 +1121,40 @@ export default function Dashboard() {
                   onCheckedChange={(v) => handleToggleShift(v)}
                 />
               </div>
+            </div>
+
+            {/* Thermal printer */}
+            <div className="rounded-xl border bg-card p-4 space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-medium flex items-center gap-2"><Printer className="h-4 w-4" /> Impressão automática</p>
+                  <p className="text-xs text-muted-foreground">
+                    Imprime o cupom (bobina 80mm) automaticamente quando um novo pedido chega. Mantenha esta aba aberta e a impressora térmica como padrão do dispositivo.
+                  </p>
+                </div>
+                <Switch checked={autoPrint} onCheckedChange={setAutoPrint} />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  printOrder({
+                    id: crypto.randomUUID(),
+                    restaurant_id: restaurant.id,
+                    customer_name: "Teste de impressão",
+                    customer_phone: "",
+                    table_number: "1",
+                    status: "pending",
+                    total: 0,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    deleted_at: null,
+                    order_type: "table",
+                  } as any)
+                }
+              >
+                <Printer className="h-4 w-4 mr-1" /> Imprimir cupom de teste
+              </Button>
             </div>
 
             {/* Service mode selector */}

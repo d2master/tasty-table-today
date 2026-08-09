@@ -141,6 +141,7 @@ export type Database = {
           delivery_lng: number | null
           delivery_maps_url: string | null
           id: string
+          observation: string
           order_type: string
           payment_method: string | null
           payment_status: string
@@ -165,6 +166,7 @@ export type Database = {
           delivery_lng?: number | null
           delivery_maps_url?: string | null
           id?: string
+          observation?: string
           order_type?: string
           payment_method?: string | null
           payment_status?: string
@@ -189,6 +191,7 @@ export type Database = {
           delivery_lng?: number | null
           delivery_maps_url?: string | null
           id?: string
+          observation?: string
           order_type?: string
           payment_method?: string | null
           payment_status?: string
@@ -472,6 +475,7 @@ export type Database = {
         Args: { _order_id: string }
         Returns: {
           created_at: string
+          observation: string
           order_type: string
           payment_status: string
           status: string
@@ -599,6 +603,7 @@ export type Database = {
         Returns: {
           created_at: string
           id: string
+          observation: string
           status: string
           tip_amount: number
           tip_enabled: boolean
