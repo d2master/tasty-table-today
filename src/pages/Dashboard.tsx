@@ -632,7 +632,9 @@ export default function Dashboard() {
               )}
             </div>
           )}
-          {!isDelivery && order.customer_phone && <p className="text-sm text-muted-foreground">Obs: {order.customer_phone}</p>}
+          {((order as any).observation || (!isDelivery && order.customer_phone)) && (
+            <p className="text-sm text-muted-foreground">Obs: {(order as any).observation || order.customer_phone}</p>
+          )}
           {isDelivery && order.customer_phone && <p className="text-sm text-muted-foreground">Tel: {order.customer_phone}</p>}
           <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString("pt-BR")}</p>
           {isTrash && order.deleted_at && (
