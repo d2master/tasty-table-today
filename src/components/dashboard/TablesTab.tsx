@@ -65,7 +65,7 @@ export default function TablesTab({ restaurantId, tableCount, restaurantName = "
     const [{ data: o }, { data: w }] = await Promise.all([
       supabase
         .from("orders")
-        .select("id, table_number, status, customer_name, waiter_id, total, tip_amount, tip_enabled, created_at")
+        .select("id, table_number, status, customer_name, waiter_id, total, tip_amount, tip_enabled, created_at, observation")
         .eq("restaurant_id", restaurantId)
         .eq("order_type", "table")
         .is("deleted_at", null)
