@@ -8,6 +8,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { useOrders } from "@/hooks/useOrders";
 import { uploadProductImage } from "@/lib/supabase-helpers";
 import { playNewOrderSound, playTimerEndSound } from "@/lib/sounds";
+import { usePrintOrder } from "@/hooks/usePrintOrder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw, Armchair, Power, Users } from "lucide-react";
+import { LogOut, Plus, Pencil, Trash2, ExternalLink, Package, FolderOpen, ShoppingBag, Copy, QrCode, Download, Timer, RotateCcw, Armchair, Power, Users, Printer } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import type { OrderItem } from "@/hooks/useOrders";
@@ -743,6 +744,9 @@ export default function Dashboard() {
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="sm" onClick={() => handleExpandOrder(order.id)}>
           {expandedOrder === order.id ? "Ocultar itens" : "Ver itens"}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => printOrder(order)}>
+          <Printer className="h-4 w-4 mr-1" /> Imprimir
         </Button>
         {!isTrash && (
           <Button variant="ghost" size="sm" onClick={() => handleSoftDelete(order.id)} className="text-destructive hover:text-destructive">
