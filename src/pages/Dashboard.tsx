@@ -1053,7 +1053,7 @@ export default function Dashboard() {
         {/* TABLES TAB */}
         {activeTab === "tables" && (
           <div className="space-y-8">
-            <TablesTab restaurantId={restaurant.id} tableCount={Number((restaurant as any).table_count ?? 0)} />
+            <TablesTab restaurantId={restaurant.id} tableCount={Number((restaurant as any).table_count ?? 0)} restaurantName={restaurant.name} restaurantPhone={(restaurant as any).owner_phone ?? null} />
 
             <div className="space-y-4 max-w-xl">
             <div className="space-y-1">
