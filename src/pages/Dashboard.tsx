@@ -133,6 +133,19 @@ export default function Dashboard() {
   // Track order count for new-order sound
   const prevOrderCountRef = useRef<number | null>(null);
 
+  // Thermal printing (80mm)
+  const { printOrder } = usePrintOrder({
+    restaurantName: restaurant?.name ?? "Pedido",
+    restaurantPhone: (restaurant as any)?.owner_phone ?? null,
+  });
+  const [autoPrint, setAutoPrint] = useState<boolean>(() => localStorage.getItem("auto_print_orders") === "1");
+  const printedRef = useRef<Set<string>>(new Set());
+  const autoPrintReadyRef = useRef(false);
+
+  useEffect(() => {
+    localStorage.setItem("auto_print_orders", autoPrint ? "1" : "0");
+  }, [autoPrint]);
+
   // Detect new orders and play sound
   useEffect(() => {
     const pendingCount = orders.filter(o => o.status === "pending").length;
@@ -142,6 +155,23 @@ export default function Dashboard() {
     }
     prevOrderCountRef.current = pendingCount;
   }, [orders]);
+
+  // Auto-print newly received orders (only orders that arrive after this session loaded)
+  useEffect(() => {
+    if (!restaurant) return;
+    if (!autoPrintReadyRef.current) {
+      orders.forEach(o => printedRef.current.add(o.id));
+      autoPrintReadyRef.current = true;
+      return;
+    }
+    if (!autoPrint) {
+      orders.forEach(o => printedRef.current.add(o.id));
+      return;
+    }
+    const fresh = orders.filter(o => !printedRef.current.has(o.id));
+    fresh.forEach(o => printedRef.current.add(o.id));
+    fresh.forEach((o, idx) => setTimeout(() => { printOrder(o); }, idx * 1500));
+  }, [orders, autoPrint, restaurant, printOrder]);
 
   // Timer countdown interval
   useEffect(() => {
