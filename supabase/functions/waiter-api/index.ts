@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
     if (action === "me") {
       // include restaurant name
       const { data: r } = await supabase.from("restaurants")
-        .select("name, table_count")
+        .select("name, table_count, tip_percent")
         .eq("id", waiter.restaurant_id).maybeSingle();
       return json({ waiter, restaurant: r });
     }
