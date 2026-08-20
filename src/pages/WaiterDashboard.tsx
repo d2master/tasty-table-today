@@ -42,6 +42,8 @@ export default function WaiterDashboard() {
   
   const [closingOrder, setClosingOrder] = useState<OrderRow | null>(null);
   const [closing, setClosing] = useState(false);
+  const [tipPercent, setTipPercent] = useState<number>(10);
+  const tipLabel = `${tipPercent.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
 
   const knownReadyRef = useRef<Set<string>>(new Set());
 
@@ -74,6 +76,16 @@ export default function WaiterDashboard() {
     if (!session) return;
     fetchTables();
   }, [session, fetchTables, refreshTick]);
+
+  useEffect(() => {
+    if (!session) return;
+    callWaiterApi("me", {}, session.token)
+      .then((data) => {
+        const pct = Number(data?.restaurant?.tip_percent);
+        if (Number.isFinite(pct)) setTipPercent(pct);
+      })
+      .catch(() => {});
+  }, [session, refreshTick]);
 
   useEffect(() => {
     if (selectedTable != null) fetchOrders(selectedTable);
