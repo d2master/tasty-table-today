@@ -25,9 +25,9 @@ const BodySchema = z.object({
 });
 
 // Waiter tip = 10% of subtotal, rounded to 2 decimals. Table orders only.
-const computeTip = (subtotal: number, enabled: boolean, orderType: string) => {
+const computeTip = (subtotal: number, enabled: boolean, orderType: string, percent: number) => {
   if (!enabled || orderType !== "table") return 0;
-  return Math.round(subtotal * 10) / 100;
+  return Math.round(subtotal * percent) / 100;
 };
 
 Deno.serve(async (req) => {
@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     // Fetch restaurant
     const { data: restaurant, error: rErr } = await supabase
       .from("restaurants")
-      .select("id, name, slug, is_blocked, is_open, closed_message, table_count, service_mode, delivery_payment_methods, pix_enabled, pix_key, pix_key_type, pix_recipient_name, pix_city")
+      .select("id, name, slug, is_blocked, is_open, closed_message, table_count, service_mode, delivery_payment_methods, tip_percent, pix_enabled, pix_key, pix_key_type, pix_recipient_name, pix_city")
       .eq("slug", body.slug)
       .maybeSingle();
 
@@ -148,7 +148,8 @@ Deno.serve(async (req) => {
     });
 
     const subtotal = computedItems.reduce((s, i) => s + i.price * i.quantity, 0);
-    const tipAmount = computeTip(subtotal, body.tip_enabled, body.order_type);
+    const tipPercent = Number((restaurant as { tip_percent?: number }).tip_percent ?? 10);
+    const tipAmount = computeTip(subtotal, body.tip_enabled, body.order_type, tipPercent);
     const total = subtotal + tipAmount;
 
     // ===== APPEND MODE: add items to an existing table order =====
@@ -225,7 +226,7 @@ Deno.serve(async (req) => {
       const previousTip = Number((existing as { tip_amount?: number }).tip_amount ?? 0);
       const previousSubtotal = Number(existing.total) - previousTip;
       const newSubtotal = previousSubtotal + subtotal;
-      const newTip = originalTipEnabled ? Math.round(newSubtotal * 10) / 100 : 0;
+      const newTip = originalTipEnabled ? Math.round(newSubtotal * tipPercent) / 100 : 0;
       const newTotal = newSubtotal + newTip;
       const updatePayload: Record<string, unknown> = { total: newTotal, tip_amount: newTip, updated_at: new Date().toISOString() };
       if (body.waiter_id) updatePayload.waiter_id = body.waiter_id;
