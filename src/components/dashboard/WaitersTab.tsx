@@ -35,6 +35,9 @@ export default function WaitersTab({ restaurantId, restaurantSlug }: { restauran
   const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
   const [from, setFrom] = useState<string>(monthAgo.toISOString().slice(0, 10));
   const [to, setTo] = useState<string>(today.toISOString().slice(0, 10));
+  const [tipPercent, setTipPercent] = useState<string>("10");
+  const [savingTip, setSavingTip] = useState(false);
+
   const waiterLoginUrl = `${window.location.origin}/garcom/login?loja=${encodeURIComponent(restaurantSlug)}`;
 
   const loadAll = useCallback(async () => {
@@ -51,6 +54,8 @@ export default function WaitersTab({ restaurantId, restaurantSlug }: { restauran
     setWaiters((w || []) as Waiter[]);
     setActive((a || []) as ActiveTable[]);
     setHistory((h || []) as HistoryRow[]);
+    const { data: r } = await supabase.from("restaurants").select("tip_percent").eq("id", restaurantId).maybeSingle();
+    if (r) setTipPercent(String(Number((r as { tip_percent: number }).tip_percent ?? 10)));
     setLoading(false);
   }, [restaurantId, from, to]);
 
@@ -78,6 +83,19 @@ export default function WaitersTab({ restaurantId, restaurantSlug }: { restauran
     toast.success("Garçom criado");
     setShowForm(false);
     setForm({ username: "", name: "", password: "" });
+    loadAll();
+  };
+
+  const handleSaveTip = async () => {
+    const value = Number(String(tipPercent).replace(",", "."));
+    if (!Number.isFinite(value) || value < 0 || value > 100) {
+      return toast.error("Informe um valor entre 0 e 100");
+    }
+    setSavingTip(true);
+    const { error } = await supabase.from("restaurants").update({ tip_percent: value }).eq("id", restaurantId);
+    setSavingTip(false);
+    if (error) return toast.error(error.message);
+    toast.success("Gorjeta atualizada");
     loadAll();
   };
 
@@ -139,6 +157,29 @@ export default function WaitersTab({ restaurantId, restaurantSlug }: { restauran
               <QRCodeSVG value={waiterLoginUrl} size={148} level="H" includeMargin />
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-card p-4">
+        <h2 className="font-display text-xl font-bold">Gorjeta do garçom</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Porcentagem sugerida ao cliente sobre o total dos itens em pedidos de mesa. Use 0 para desativar a gorjeta.
+        </p>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="sm:w-40">
+            <Label className="text-xs">Porcentagem (%)</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              step="0.5"
+              value={tipPercent}
+              onChange={(e) => setTipPercent(e.target.value)}
+            />
+          </div>
+          <Button onClick={handleSaveTip} disabled={savingTip}>
+            {savingTip ? "Salvando..." : "Salvar gorjeta"}
+          </Button>
         </div>
       </div>
 

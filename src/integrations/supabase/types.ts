@@ -314,6 +314,7 @@ export type Database = {
           service_mode: string
           slug: string
           table_count: number
+          tip_percent: number
           trash_password: string | null
           updated_at: string
         }
@@ -338,6 +339,7 @@ export type Database = {
           service_mode?: string
           slug: string
           table_count?: number
+          tip_percent?: number
           trash_password?: string | null
           updated_at?: string
         }
@@ -362,6 +364,7 @@ export type Database = {
           service_mode?: string
           slug?: string
           table_count?: number
+          tip_percent?: number
           trash_password?: string | null
           updated_at?: string
         }
@@ -503,6 +506,7 @@ export type Database = {
           service_mode: string
           slug: string
           table_count: number
+          tip_percent: number
         }[]
       }
       get_restaurant_pix_for_checkout: {
