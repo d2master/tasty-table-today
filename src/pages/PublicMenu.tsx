@@ -317,8 +317,10 @@ export default function PublicMenu() {
 
   const cartTotal = cart.reduce((sum, c) => sum + c.quantity * effectivePrice(c.product), 0);
   const cartCount = cart.reduce((sum, c) => sum + c.quantity, 0);
+  const tipPercent = Number(restaurant?.tip_percent ?? 10);
+  const tipLabel = `${tipPercent.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
   const tipApplies = orderMode === "table" && tipEnabled && !appendMode;
-  const tipAmount = tipApplies ? Math.round(cartTotal * 10) / 100 : 0;
+  const tipAmount = tipApplies ? Math.round(cartTotal * tipPercent) / 100 : 0;
   const cartTotalWithTip = cartTotal + tipAmount;
 
   const tableSchema = z.object({
