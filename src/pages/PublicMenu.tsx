@@ -768,7 +768,7 @@ export default function PublicMenu() {
                                       <span>R$ {itemsSubtotal.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                      <span className="text-muted-foreground">10% garçom</span>
+                                      <span className="text-muted-foreground">{tipLabel} garçom</span>
                                       <span>R$ {tip.toFixed(2)}</span>
                                     </div>
                                   </>
@@ -902,7 +902,7 @@ export default function PublicMenu() {
                 </div>
               ))}
 
-              {orderMode === "table" && !appendMode && (
+              {orderMode === "table" && !appendMode && tipPercent > 0 && (
                 <div className="pt-2 rounded-lg border bg-secondary/30 p-3">
                   <label className="flex items-start gap-3 cursor-pointer">
                     <input
@@ -913,9 +913,9 @@ export default function PublicMenu() {
                     />
                     <div className="flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium">Adicionar 10% do garçom</span>
+                        <span className="text-sm font-medium">Adicionar {tipLabel} do garçom</span>
                         <span className="text-sm font-semibold text-primary">
-                          + R$ {(Math.round(cartTotal * 10) / 100).toFixed(2)}
+                          + R$ {(Math.round(cartTotal * tipPercent) / 100).toFixed(2)}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
@@ -934,7 +934,7 @@ export default function PublicMenu() {
               )}
               {tipApplies && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">10% garçom</span>
+                  <span className="text-muted-foreground">{tipLabel} garçom</span>
                   <span>R$ {tipAmount.toFixed(2)}</span>
                 </div>
               )}
