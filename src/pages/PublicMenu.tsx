@@ -34,6 +34,7 @@ interface Restaurant {
   pix_recipient_name?: string | null;
   pix_city?: string | null;
   delivery_payment_methods?: string[];
+  tip_percent?: number;
 }
 
 interface TableInfo {
