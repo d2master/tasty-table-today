@@ -24,7 +24,7 @@ const BodySchema = z.object({
   waiter_id: z.string().uuid().optional(),
 });
 
-// Waiter tip = 10% of subtotal, rounded to 2 decimals. Table orders only.
+// Waiter tip uses the restaurant's configured percentage. Table orders only.
 const computeTip = (subtotal: number, enabled: boolean, orderType: string, percent: number) => {
   if (!enabled || orderType !== "table") return 0;
   return Math.round(subtotal * percent) / 100;

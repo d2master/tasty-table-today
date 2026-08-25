@@ -271,12 +271,12 @@ export default function WaiterDashboard() {
               {["pending","preparing","ready"].includes(o.status) && (
                 closingOrder?.id === o.id ? (
                   <div className="rounded-lg border bg-muted/40 p-3 space-y-3">
-                    <p className="text-sm font-medium">O cliente deseja pagar os 10% do garçom?</p>
+                    <p className="text-sm font-medium">O cliente deseja pagar os {tipLabel} do garçom?</p>
                     <p className="text-xs text-muted-foreground">
-                      10% = {currency((items[o.id] || []).reduce((s, it) => s + Number(it.price) * it.quantity, 0) * 0.1)}
+                      {tipLabel} = {currency((items[o.id] || []).reduce((s, it) => s + Number(it.price) * it.quantity, 0) * tipPercent / 100)}
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" disabled={closing} onClick={() => closeBill(o.id, true)}>Sim, pagar 10%</Button>
+                      <Button size="sm" disabled={closing} onClick={() => closeBill(o.id, true)}>Sim, pagar {tipLabel}</Button>
                       <Button size="sm" variant="outline" disabled={closing} onClick={() => closeBill(o.id, false)}>Não pagar</Button>
                       <Button size="sm" variant="ghost" disabled={closing} onClick={() => setClosingOrder(null)}>Cancelar</Button>
                     </div>

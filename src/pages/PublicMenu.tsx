@@ -171,6 +171,7 @@ export default function PublicMenu() {
         pix_recipient_name: rest.pix_recipient_name,
         pix_city: rest.pix_city,
         delivery_payment_methods: ((rest as { delivery_payment_methods?: string[] }).delivery_payment_methods) ?? ["pix","debito","credito","dinheiro"],
+        tip_percent: Number((rest as { tip_percent?: number }).tip_percent ?? 10),
       });
       if (rest.is_blocked) { setLoading(false); return; }
 
