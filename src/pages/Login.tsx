@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,22 +10,54 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now());
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const t = setInterval(() => {
+      setNow(Date.now());
+      if (Date.now() >= lockedUntil) setLockedUntil(null);
+    }, 1000);
+    return () => clearInterval(t);
+  }, [lockedUntil]);
+
+  const remainingMs = lockedUntil ? Math.max(0, lockedUntil - now) : 0;
+  const mm = String(Math.floor(remainingMs / 60000)).padStart(2, "0");
+  const ss = String(Math.floor((remainingMs % 60000) / 1000)).padStart(2, "0");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (lockedUntil) return;
     setLoading(true);
     const normalizedEmail = email.trim().toLowerCase();
-    const { error } = await supabase.auth.signInWithPassword({
-      email: normalizedEmail,
-      password,
+    const { data, error } = await supabase.functions.invoke("restaurant-login", {
+      body: { email: normalizedEmail, password },
     });
-    setLoading(false);
+    let body: any = data;
     if (error) {
-      console.error(error);
-      toast.error("Email ou senha inválidos. Tente novamente.");
-    } else {
+      try { body = await (error as any).context?.json?.(); } catch { body = null; }
+    }
+    if (body?.access_token) {
+      const { error: sErr } = await supabase.auth.setSession({
+        access_token: body.access_token,
+        refresh_token: body.refresh_token,
+      });
+      setLoading(false);
+      if (sErr) { toast.error("Não foi possível entrar. Tente novamente."); return; }
       navigate("/dashboard");
+      return;
+    }
+    setLoading(false);
+    if (body?.error === "locked") {
+      setLockedUntil(new Date(body.locked_until).getTime());
+      setNow(Date.now());
+      toast.error("Muitas tentativas incorretas. Login bloqueado por 15 minutos.");
+    } else if (body?.error === "invalid_credentials") {
+      toast.error(`Email ou senha inválidos. Restam ${body.remaining} tentativa(s).`);
+    } else {
+      toast.error("Email ou senha inválidos. Tente novamente.");
     }
   };
 
